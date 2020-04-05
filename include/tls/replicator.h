@@ -1,9 +1,7 @@
 ﻿#ifndef __TLS_REPLICATOR_H
 #define __TLS_REPLICATOR_H
 
-#include <atomic>
 #include <shared_mutex>
-#include <type_traits>
 #include <vector>
 
 namespace tls {

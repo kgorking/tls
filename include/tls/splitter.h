@@ -13,6 +13,7 @@ namespace tls {
 
     namespace detail {
         // Cache-line aware allocator for std::forward_list
+        // This is needed to ensure that data is forced into seperate cache lines
         template<class T> // T is the list node containing the type
         struct cla_forward_list_allocator {
             using value_type = T;
@@ -45,14 +46,16 @@ namespace tls {
     }
 
     // Provides a thread-local instance of the type T for each thread that
-    // accesses it. The set of instances can be accessed through the begin()/end() iterators.
+    // accesses it. This avoid having to use locks to read/write data.
+    // This class only locks when a new thread is created/destroyed.
+    // The set of instances can be accessed through the begin()/end() iterators.
     template <typename T>
     class splitter {
         // This struct manages the instances that access the thread-local data.
         // Its lifetime is marked as thread_local, which means that it can live longer than
-        // the threaded<> instance that spawned it.
+        // the splitter<> instance that spawned it.
         struct instance_access {
-            // Return reference to this instances local data
+            // Return a reference to an instances local data
             T& get(splitter<T>* instance) {
                 if (instance != owner) {
                     // First-time access
@@ -88,9 +91,8 @@ namespace tls {
             return &data.front();
         }
 
-        // Remove the threal_local_data. The data itself is preserved
+        // Remove the instance_access. The data itself is preserved
         void remove_thread(instance_access* t) noexcept {
-            // Remove the instance_access from the vector
             auto it = std::find(instances.begin(), instances.end(), t);
             if (it != instances.end()) {
                 std::swap(*it, instances.back());
@@ -111,11 +113,10 @@ namespace tls {
         // Get the thread-local instance of T for the current instance
         T& local() {
             thread_local instance_access var{};
-            T& t = var.get(this);
-            return t;
+            return var.get(this);
         }
 
-        // Clears all the thread instances
+        // Clears all the thread instances and data
         void clear() noexcept {
             for (instance_access* instance : instances)
                 instance->remove(this);

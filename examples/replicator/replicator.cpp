@@ -1,9 +1,10 @@
-#include <tls/replicator.h>
 #include <vector>
 #include <thread>
 #include <iostream>
 #include <chrono>
 #include <mutex>
+
+#include <tls/replicator.h>
 
 using namespace std::chrono_literals;
 
@@ -26,7 +27,6 @@ int main() {
         int num_reads = 0;
         while (true) {
             int const val = repl.read();
-            num_reads++;
 
             if (val == -1) {
                 std::scoped_lock sl{ cout_mtx };
@@ -38,12 +38,14 @@ int main() {
                 last_read = val;
 
                 std::scoped_lock sl{ cout_mtx };
-                std::cout << thread_index << ": got new value '" << val << "', read old value " << num_reads << " times\n";
+                std::cout << "thread " << thread_index << ": got new value '" << val << "', read old value " << num_reads << " times\n";
                 num_reads = 0;
             }
 
-            std::this_thread::sleep_for(5ms);
-            //std::this_thread::yield(); // will peg the cpu at 100% utilization
+            //std::this_thread::sleep_for(5ms);
+            std::this_thread::yield(); // will peg the cpu at 100% utilization
+
+            num_reads++;
         }
     };
 

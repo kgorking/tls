@@ -51,7 +51,7 @@ TEST_CASE("tls::splitter<> specification") {
         acc.clear();
         REQUIRE(result == 1024 * 1024);
 
-        int const result_copy = std::reduce(acc_copy.cbegin(), acc_copy.cend());
+        int const result_copy = std::reduce(acc_copy.begin(), acc_copy.end());
         REQUIRE(result == result_copy);
     }
 }

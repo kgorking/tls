@@ -79,6 +79,14 @@ namespace tls {
         };
         friend instance_access;
 
+        // the threads that access this instance
+        std::vector<instance_access*> instances;
+
+        // instance-data created by each thread.
+        // list contents are not invalidated when more items are added, unlike a vector
+        std::forward_list<T, detail::cla_forward_list_allocator<T>> data;
+
+protected:
         // Adds a instance_access and allocates its data.
         // Returns a pointer to the data
         T* init_thread(instance_access* t) {
@@ -105,10 +113,13 @@ namespace tls {
             clear();
         }
 
-        auto begin() const noexcept { return data.begin(); }
-        auto end() const noexcept { return data.end(); }
-        auto cbegin() const noexcept { return data.cbegin(); }
-        auto cend() const noexcept { return data.cend(); }
+        using iterator = typename decltype(data)::iterator;
+        using const_iterator = typename decltype(data)::const_iterator;
+
+        iterator begin() noexcept { return data.begin(); }
+        iterator end() noexcept { return data.end(); }
+        const_iterator begin() const noexcept { return data.begin(); }
+        const_iterator end() const noexcept { return data.end(); }
 
         // Get the thread-local instance of T for the current instance
         T& local() {
@@ -134,14 +145,6 @@ namespace tls {
         void sort(Predicate pred) {
             data.sort(pred);
         }
-
-    private:
-        // the threads that access this instance
-        std::vector<instance_access*> instances;
-
-        // instance-data created by each thread.
-        // list contents are not invalidated when more items are added, unlike a vector
-        std::forward_list<T, detail::cla_forward_list_allocator<T>> data;
     };
 }
 

@@ -1,7 +1,6 @@
 #ifndef __TLS_CACHE
 #define __TLS_CACHE
 
-#include <optional>
 #include <array>
 
 namespace tls {
@@ -15,27 +14,14 @@ namespace tls {
             keys.fill(empty_slot);
         }
 
-        std::optional<Value> get(Key const& k) const {
-            auto const index = find_index(k);
-            if (!index || index.value() == empty_slot)
-                return {};
-            return values[index.value()];
-        }
-
         template <class Fn>
         Value get_or(Key const& k, Fn or_fn) {
             auto const index = find_index(k);
-            if (index)
-                return values[index.value()];
+            if (index < max_entries)
+                return values[index];
 
             insert_val(k, or_fn(k));
             return values[0];
-        }
-
-        // Set a key/value pair.
-        // Assumes get has already been called without success
-        void set(Key const& k, Value v) {
-            insert_val(k, std::move(v));
         }
 
     protected:
@@ -49,10 +35,10 @@ namespace tls {
             values[0] = std::move(v);
         }
 
-        std::optional<std::ptrdiff_t> find_index(Key const& k) const {
+        std::size_t find_index(Key const& k) const {
             auto const it = std::find(keys.begin(), keys.end(), k);
             if (it == keys.end())
-                return {};
+                return max_entries;
             return std::distance(keys.begin(), it);
         }
 

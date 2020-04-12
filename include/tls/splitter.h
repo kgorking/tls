@@ -49,6 +49,7 @@ namespace tls {
     // accesses it. This avoid having to use locks to read/write data.
     // This class only locks when a new thread is created/destroyed.
     // The set of instances can be accessed through the begin()/end() iterators.
+    // Note: Two splitter<T> instances in the same thread will point to the same data.
     template <typename T>
     class splitter {
         // This struct manages the instances that access the thread-local data.

@@ -33,10 +33,14 @@ TEST_CASE("tls::splitter<> specification") {
         REQUIRE(result == 0);
     }
 
-    SECTION("two instances do not interfere with eachother") {
-        tls::splitter<int> acc1, acc2;
-        acc1.local() = 42;
-        REQUIRE(acc2.local() != 42);
+    SECTION("instances do not interfere with eachother") {
+        tls::splitter<int> s1, s2, s3;
+        s1.local() = 1;
+        s2.local() = 2;
+        s3.local() = 3;
+        CHECK(s1.local() == 3);
+        CHECK(s2.local() == 3);
+        CHECK(s3.local() == 3);
     }
 
     SECTION("tls::splitter<> variables can be copied") {

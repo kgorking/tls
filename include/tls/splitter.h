@@ -57,7 +57,7 @@ namespace tls {
         struct instance_access {
             // Return a reference to an instances local data
             T& get(splitter<T>* instance) {
-                if (instance != owner) {
+                if (owner == nullptr) {
                     // First-time access
                     owner = instance;
                     data = instance->init_thread(this);

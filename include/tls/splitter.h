@@ -50,14 +50,16 @@ namespace tls {
     // This class only locks when a new thread is created/destroyed.
     // The set of instances can be accessed through the begin()/end() iterators.
     // Note: Two splitter<T> instances in the same thread will point to the same data.
-    template <typename T>
+    //       Differentiate between them by passing different types to 'UnusedDifferentiaterType'.
+    //       As the name implies, it's not used internally, so just put whatever.
+    template <typename T, typename UnusedDifferentiaterType = void>
     class splitter {
         // This struct manages the instances that access the thread-local data.
         // Its lifetime is marked as thread_local, which means that it can live longer than
         // the splitter<> instance that spawned it.
         struct instance_access {
             // Return a reference to an instances local data
-            T& get(splitter<T>* instance) {
+            T& get(splitter<T, UnusedDifferentiaterType>* instance) {
                 if (owner == nullptr) {
                     // First-time access
                     owner = instance;
@@ -67,7 +69,7 @@ namespace tls {
                 return *data;
             }
 
-            void remove(splitter<T>* instance) noexcept {
+            void remove(splitter<T, UnusedDifferentiaterType>* instance) noexcept {
                 if (owner == instance) {
                     owner = nullptr;
                     data = nullptr;
@@ -75,7 +77,7 @@ namespace tls {
             }
 
         private:
-            splitter<T>* owner{};
+            splitter<T, UnusedDifferentiaterType>* owner{};
             T* data{};
         };
         friend instance_access;

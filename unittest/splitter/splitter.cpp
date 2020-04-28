@@ -33,7 +33,7 @@ TEST_CASE("tls::splitter<> specification") {
         REQUIRE(result == 0);
     }
 
-    SECTION("instances do not interfere with eachother") {
+    SECTION("multiple instances points to the same data") {
         tls::splitter<int> s1, s2, s3;
         s1.local() = 1;
         s2.local() = 2;
@@ -41,6 +41,18 @@ TEST_CASE("tls::splitter<> specification") {
         CHECK(s1.local() == 3);
         CHECK(s2.local() == 3);
         CHECK(s3.local() == 3);
+
+        tls::splitter<int, bool> s4;
+        tls::splitter<int, char> s5;
+        tls::splitter<int, short> s6;
+        tls::splitter<int, void> s7;  // same as splitter<int> s1,s2,s3
+        s4.local() = 1;
+        s5.local() = 2;
+        s6.local() = 3;
+        CHECK(s4.local() == 1);
+        CHECK(s5.local() == 2);
+        CHECK(s6.local() == 3);
+        CHECK(s7.local() == 3);
     }
 
     SECTION("tls::splitter<> variables can be copied") {
@@ -53,9 +65,9 @@ TEST_CASE("tls::splitter<> specification") {
 
         int const result = std::reduce(acc.begin(), acc.end());
         acc.clear();
-        REQUIRE(result == 1024 * 1024);
+        CHECK(result == 1024 * 1024);
 
         int const result_copy = std::reduce(acc_copy.begin(), acc_copy.end());
-        REQUIRE(result == result_copy);
+        CHECK(result == result_copy);
     }
 }

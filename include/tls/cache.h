@@ -24,6 +24,11 @@ namespace tls {
             return values[0];
         }
 
+        void reset() {
+            keys.fill(empty_slot);
+            values.fill(Value{});
+        }
+
     protected:
         void insert_val(Key const& k, Value v) {
             // Move all but last pair one step to the right

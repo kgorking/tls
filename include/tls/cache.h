@@ -8,7 +8,7 @@ namespace tls {
     template <class Key, class Value, Key empty_slot = Key{}, size_t cache_line = 64UL>
     class cache {
     public:
-        static constexpr size_t max_entries = (cache_line) / (sizeof Key + sizeof Value);
+        static constexpr size_t max_entries = (cache_line) / (sizeof(Key) + sizeof(Value));
 
         cache() noexcept {
             keys.fill(empty_slot);

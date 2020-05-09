@@ -1,7 +1,7 @@
 #ifndef __TLS_CACHE
 #define __TLS_CACHE
 
-#include <array>
+#include <algorithm>
 
 namespace tls {
     // A class using a cache-line to cache data
@@ -11,7 +11,7 @@ namespace tls {
         static constexpr size_t max_entries = (cache_line) / (sizeof(Key) + sizeof(Value));
 
         cache() noexcept {
-            keys.fill(empty_slot);
+            reset();
         }
 
         template <class Fn>
@@ -25,15 +25,15 @@ namespace tls {
         }
 
         void reset() {
-            keys.fill(empty_slot);
-            values.fill(Value{});
+            std::fill(keys, keys + max_entries, empty_slot);
+            std::fill(values, values + max_entries, Value{});
         }
 
     protected:
         void insert_val(Key const& k, Value v) {
             // Move all but last pair one step to the right
-            std::move_backward(keys.begin(), keys.end() - 1, keys.end());
-            std::move_backward(values.begin(), values.end() - 1, values.end());
+            std::shift_right(keys, keys + max_entries, 1);
+            std::shift_right(values, values + max_entries, 1);
 
             // Insert the new pair at the front of the cache
             keys[0] = k;
@@ -41,15 +41,15 @@ namespace tls {
         }
 
         std::size_t find_index(Key const& k) const {
-            auto const it = std::find(keys.begin(), keys.end(), k);
-            if (it == keys.end())
+            auto const it = std::find(keys, keys + max_entries, k);
+            if (it == keys + max_entries)
                 return max_entries;
-            return std::distance(keys.begin(), it);
+            return std::distance(keys, it);
         }
 
     private:
-        std::array<Key, max_entries> keys{};
-        std::array<Value, max_entries> values{};
+        Key keys[max_entries];
+        Value values[max_entries];
     };
 
 }

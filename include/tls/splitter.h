@@ -1,5 +1,5 @@
-#ifndef __TLS_SPLITTER_H
-#define __TLS_SPLITTER_H
+#ifndef TLS_SPLITTER_H
+#define TLS_SPLITTER_H
 
 #include <mutex>
 #include <vector>
@@ -151,4 +151,4 @@ protected:
     };
 }
 
-#endif // !__TLS_SPLITTER_H
+#endif // !TLS_SPLITTER_H

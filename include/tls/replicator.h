@@ -1,5 +1,5 @@
-﻿#ifndef __TLS_REPLICATOR_H
-#define __TLS_REPLICATOR_H
+﻿#ifndef TLS_REPLICATOR_H
+#define TLS_REPLICATOR_H
 
 #include <shared_mutex>
 #include <vector>
@@ -180,4 +180,4 @@ namespace tls {
         std::shared_mutex mtx;
     };
 }
-#endif // !__TLS_REPLICATOR_H
+#endif // !TLS_REPLICATOR_H

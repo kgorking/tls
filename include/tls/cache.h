@@ -10,12 +10,12 @@ namespace tls {
     public:
         static constexpr size_t max_entries = (cache_line) / (sizeof(Key) + sizeof(Value));
 
-        cache() noexcept {
+        constexpr cache() noexcept {
             reset();
         }
 
         template <class Fn>
-        Value get_or(Key const& k, Fn or_fn) {
+        constexpr Value get_or(Key const& k, Fn or_fn) {
             auto const index = find_index(k);
             if (index < max_entries)
                 return values[index];
@@ -24,13 +24,13 @@ namespace tls {
             return values[0];
         }
 
-        void reset() {
+        constexpr void reset() {
             std::fill(keys, keys + max_entries, empty_slot);
             std::fill(values, values + max_entries, Value{});
         }
 
     protected:
-        void insert_val(Key const& k, Value v) {
+        constexpr void insert_val(Key const& k, Value v) {
             // Move all but last pair one step to the right
             //std::shift_right(keys, keys + max_entries, 1);
             //std::shift_right(values, values + max_entries, 1);
@@ -42,7 +42,7 @@ namespace tls {
             values[0] = std::move(v);
         }
 
-        std::size_t find_index(Key const& k) const {
+        constexpr std::size_t find_index(Key const& k) const {
             auto const it = std::find(keys, keys + max_entries, k);
             if (it == keys + max_entries)
                 return max_entries;

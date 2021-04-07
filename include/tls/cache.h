@@ -1,5 +1,5 @@
-#ifndef __TLS_CACHE
-#define __TLS_CACHE
+#ifndef TLS_CACHE
+#define TLS_CACHE
 
 #include <algorithm>
 
@@ -56,4 +56,4 @@ namespace tls {
 
 }
 
-#endif // !__TLS_CACHE
+#endif // !TLS_CACHE

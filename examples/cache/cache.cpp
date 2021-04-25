@@ -12,12 +12,12 @@ int main() {
     static Key const empty = -1;
 
     using cache = tls::cache<Key, Value, empty>;
-    std::cout << "cache size is " << sizeof(cache) << " bytes, can hold " << cache::max_entries << " entries\n";
+    std::cout << "cache size is " << sizeof(cache) << " bytes, can hold " << cache::max_entries() << " entries\n";
 
     // Generate values to fill in the cache
     std::vector<Value> values(1'000'000);
     std::generate(values.begin(), values.end(), []() {
-        return rand() % static_cast<Value>(cache::max_entries + 1);
+        return rand() % static_cast<Value>(cache::max_entries() + 1);
     });
 
     auto const calc_val = [](Value val) {

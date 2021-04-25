@@ -10,8 +10,8 @@ install(
     DESTINATION include
 )
 
-# Require c++ 17
-set(CMAKE_CXX_STANDARD 17)
+# Require c++ 20
+set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED on)
 
 # determine whether this is a standalone project or included by other projects

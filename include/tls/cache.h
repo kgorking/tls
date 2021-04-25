@@ -23,9 +23,10 @@ namespace tls {
         // otherwise inserts 'or_fn(k)' in cache and returns it
         template <class Fn>
         constexpr Value get_or(Key const k, Fn or_fn) {
-            auto const index = find_index(k);
-            if (index < num_entries)
-                return values[index];
+            for (size_t index = 0; index < num_entries; index++) {
+				if (k == keys[index])
+                    return values[index];
+            }
 
             insert_val(k, or_fn(k));
             return values[0];
@@ -51,13 +52,6 @@ namespace tls {
             // Insert the new pair at the front of the cache
             keys[0] = k;
             values[0] = v;
-        }
-
-        constexpr std::size_t find_index(Key const k) const {
-            auto const it = std::find(keys, keys + num_entries, k);
-            if (it == keys + num_entries)
-                return num_entries;
-            return std::distance(keys, it);
         }
 
     private:

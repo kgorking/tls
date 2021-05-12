@@ -38,8 +38,8 @@ void accumulate_test() {
             accumulator.local() += cbrt(i);
         });
 
-        auto collected = accumulator.collect();
-        double result = std::accumulate(collected.begin(), collected.end(), 0.0);
+        double result = 0;
+		accumulator.for_each([&result](double val) { result += val; });
 
         auto time2 = std::chrono::system_clock::now() - start;
         std::cout << " result avg:    " << result / vec.size() << "\n";

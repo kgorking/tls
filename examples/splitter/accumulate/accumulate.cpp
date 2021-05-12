@@ -37,7 +37,9 @@ void accumulate_test() {
         std::for_each(std::execution::par, vec.begin(), vec.end(), [&accumulator](double i) {
             accumulator.local() += cbrt(i);
         });
-        double result = std::accumulate(accumulator.begin(), accumulator.end(), 0.0);
+
+        auto collected = accumulator.collect();
+        double result = std::accumulate(collected.begin(), collected.end(), 0.0);
 
         auto time2 = std::chrono::system_clock::now() - start;
         std::cout << " result avg:    " << result / vec.size() << "\n";

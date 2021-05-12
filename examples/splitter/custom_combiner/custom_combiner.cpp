@@ -17,8 +17,9 @@ int main() {
     });
 
     // Combine with a lambda
+	auto const collection = vec.collect();
     std::vector<double> combined_vec;
-    std::for_each(vec.begin(), vec.end(), [&combined_vec](std::vector<double> const& a) {
+    std::for_each(collection.begin(), collection.end(), [&combined_vec](std::vector<double> const& a) {
         combined_vec.insert(combined_vec.end(), a.begin(), a.end());
     });
     std::cout << "Result was " << combined_vec.size() << ", expected " << input.size() << '\n';

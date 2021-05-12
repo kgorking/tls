@@ -33,7 +33,7 @@ TEST_CASE("tls::splitter<> specification") {
         REQUIRE(result == 0);
     }
 
-    SECTION("multiple instances points to the same data") {
+    SECTION("multiple instances in same scope points to the same data") {
         tls::splitter<int> s1, s2, s3;
         s1.local() = 1;
         s2.local() = 2;
@@ -45,29 +45,24 @@ TEST_CASE("tls::splitter<> specification") {
         tls::splitter<int, bool> s4;
         tls::splitter<int, char> s5;
         tls::splitter<int, short> s6;
-        tls::splitter<int, void> s7;  // same as splitter<int> s1,s2,s3
         s4.local() = 1;
         s5.local() = 2;
         s6.local() = 3;
         CHECK(s4.local() == 1);
         CHECK(s5.local() == 2);
         CHECK(s6.local() == 3);
-        CHECK(s7.local() == 3);
     }
 
-    SECTION("tls::splitter<> variables can be copied") {
-        std::vector<int> vec(1024 * 1024, 1);
-        tls::splitter<int> acc;
+    SECTION("data does not persist between out-of-scope instances") {
+		{
+			tls::splitter<int> s1;
+			s1.local() = 1;
+			CHECK(s1.local() == 1);
+		}
 
-        std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const& i) { acc.local() += i; });
-
-        tls::splitter<int> const acc_copy = acc;
-
-        int const result = std::reduce(acc.begin(), acc.end());
-        acc.clear();
-        CHECK(result == 1024 * 1024);
-
-        int const result_copy = std::reduce(acc_copy.begin(), acc_copy.end());
-        CHECK(result == result_copy);
+        {
+			tls::splitter<int> s2;
+			CHECK(s2.local() != 1);
+		}
     }
 }

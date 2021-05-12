@@ -65,7 +65,7 @@ int main() {
     dump_threaded(vec);
 
     std::cout << "Sorted:\n";
-    vec.sort([](auto& l, auto& r) {
+    vec.sort([](auto const& l, auto const& r) {
         return l.front() < r.front();
     });
     dump_threaded(vec);

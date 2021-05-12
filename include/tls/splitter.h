@@ -184,11 +184,11 @@ namespace tls {
         }
 
     public:
-		splitter() noexcept = default;
+		constexpr splitter() noexcept = default;
 		splitter(splitter const &) = delete;
-		splitter(splitter &&) noexcept = default;
+		constexpr splitter(splitter &&) noexcept = default;
 		splitter& operator=(splitter const &) = delete;
-		splitter& operator=(splitter &&) noexcept = default;
+		constexpr splitter& operator=(splitter &&) noexcept = default;
         ~splitter() noexcept {
             clear();
         }

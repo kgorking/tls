@@ -182,7 +182,7 @@ namespace tls {
 
     private:
         // the head of the threads that access this splitter instance
-        instance_access head;
+		instance_access *head{};
 
         // Mutex for serializing access for adding/removing thread-local instances
         std::mutex mtx_storage;
@@ -193,26 +193,30 @@ namespace tls {
         void init_thread(instance_access* t) {
             std::scoped_lock sl(mtx_storage);
 
-            t->set_next(head.get_next());
-			head.set_next(t);
+            t->set_next(head);
+			head = t;
         }
 
         // Remove the instance_access. The data itself is preserved
         void remove_thread(instance_access* t) noexcept {
-			if (head.get_next() == nullptr)
+			if (head == nullptr)
 				return;
 
             std::scoped_lock sl(mtx_storage);
 
-            auto curr = &head;
-            while(curr != nullptr) {
-                if (curr->get_next() == t) {
-					curr->set_next(t->get_next());
-					return;
-                } else {
-					curr = curr->get_next();
-                }
-            }
+            if (head == t) {
+				head = t->get_next();
+			} else {
+				auto curr = head;
+				while (curr != nullptr) {
+					if (curr->get_next() == t) {
+						curr->set_next(t->get_next());
+						return;
+					} else {
+						curr = curr->get_next();
+					}
+				}
+			}
         }
 
     public:
@@ -225,9 +229,9 @@ namespace tls {
             clear();
         }
 
-        iterator begin() noexcept { return iterator{&head}; }
+        iterator begin() noexcept { return iterator{head}; }
         iterator end() noexcept { return iterator{}; }
-        const_iterator begin() const noexcept { return const_iterator{&head}; }
+        const_iterator begin() const noexcept { return const_iterator{head}; }
         const_iterator end() const noexcept { return const_iterator{}; }
 
         // Get the thread-local instance of T
@@ -238,13 +242,13 @@ namespace tls {
 
         // Clears all the thread instances and data
         void clear() noexcept {
-			for (instance_access *instance = &head; instance != nullptr; ) {
+			for (instance_access *instance = head; instance != nullptr; ) {
 				auto next = instance->get_next();
 				instance->remove(this);
 				instance = next;
 			}
 
-			head.set_next(nullptr);
+			head = nullptr;
         }
     };
 }

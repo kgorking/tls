@@ -17,14 +17,14 @@ namespace tls {
         // Its lifetime is marked as thread_local, which means that it can live longer than
         // the splitter<> instance that spawned it.
         struct instance_access {
-            ~instance_access() {
+            ~instance_access() noexcept {
                 if (owner != nullptr) {
 					owner->remove_thread(this);
                 }
             }
 
             // Return a reference to an instances local data
-            T& get(splitter<T, UnusedDifferentiaterType>* instance) {
+            T& get(splitter<T, UnusedDifferentiaterType>* instance) noexcept {
                 // If the owner is null, (re-)initialize the instance.
                 // Data may still be present if the thread_local instance is still active
 				if (owner == nullptr) {
@@ -43,24 +43,12 @@ namespace tls {
                 }
             }
 
-            T* get_data() {
-				return &data;
-            }
-            T const* get_data() const {
-				return &data;
-            }
+            T* get_data() noexcept { return &data; }
+            T const* get_data() const noexcept { return &data; }
 
-            void set_next(instance_access *ia) {
-				next = ia;
-            }
-
-            instance_access* get_next() {
-				return next;
-            }
-
-            instance_access const* get_next() const {
-				return next;
-            }
+            void set_next(instance_access *ia) noexcept { next = ia; }
+            instance_access* get_next() noexcept { return next; }
+            instance_access const* get_next() const noexcept { return next; }
 
         private:
             T data{};
@@ -80,104 +68,20 @@ namespace tls {
             using iterator_category = std::forward_iterator_tag;
 
             constexpr iterator() noexcept = default;
+            constexpr iterator(instance_access *inst_) noexcept : inst(inst_) { }
 
-            constexpr iterator(instance_access *inst_) noexcept
-                : inst(inst_) {
-            }
+            constexpr iterator& operator++() noexcept { inst = inst->get_next(); return *this; }
+            constexpr iterator operator++(int) noexcept { iterator const retval = *this; inst = inst->get_next(); return retval; }
 
-            constexpr iterator(instance_access const* inst_) noexcept
-                : inst(inst_) {
-            }
+            constexpr bool operator==(iterator other) const noexcept { return inst == other.inst; }
+            constexpr bool operator!=(iterator other) const noexcept { return !(*this == other); }
 
-            constexpr iterator& operator++() {
-				inst = inst->get_next();
-                return *this;
-            }
-
-            constexpr iterator operator++(int) {
-                iterator const retval = *this;
-				inst = inst->get_next();
-                return retval;
-            }
-
-            constexpr bool operator==(iterator other) const {
-                return inst == other.inst;
-            }
-
-            constexpr bool operator!=(iterator other) const {
-                return !(*this == other);
-            }
-
-            constexpr value_type& operator*() {
-                return *inst->get_data();
-            }
-
-            constexpr value_type* operator->() {
-                return inst->get_data();
-            }
-
-            constexpr value_type& operator*() const {
-                return *inst->get_data();
-            }
-
-            constexpr value_type* operator->() const {
-                return inst->get_data();
-            }
+            constexpr value_type& operator*() noexcept { return *inst->get_data(); }
+            constexpr value_type& operator*() const noexcept { return *inst->get_data(); }
+            constexpr value_type* operator->() noexcept { return inst->get_data(); }
+            constexpr value_type* operator->() const noexcept { return inst->get_data(); }
         private:
             instance_access *inst{};
-        };
-        class const_iterator {
-        public:
-            // iterator traits
-            using difference_type = ptrdiff_t;
-            using value_type = const T;
-            using pointer = const value_type*;
-            using reference = const value_type&;
-            using iterator_category = std::forward_iterator_tag;
-
-            constexpr const_iterator() noexcept = default;
-
-            constexpr const_iterator(instance_access const* inst_) noexcept
-                : inst(inst_) {
-            }
-
-            constexpr const_iterator& operator++() {
-				inst = inst->get_next();
-                return *this;
-            }
-
-            constexpr const_iterator operator++(int) {
-                const_iterator const retval = *this;
-				inst = inst->get_next();
-                return retval;
-            }
-
-            constexpr bool operator==(const_iterator other) const {
-                return inst == other.inst;
-            }
-
-            constexpr bool operator!=(const_iterator other) const {
-                return !(*this == other);
-            }
-
-            constexpr value_type& operator*() {
-                return *inst->get_data();
-            }
-
-            constexpr value_type* operator->() {
-                return inst->get_data();
-            }
-
-            constexpr value_type& operator*() const {
-                return *inst->get_data();
-            }
-
-            constexpr value_type* operator->() const {
-                return inst->get_data();
-            }
-
-        private:
-            instance_access const* inst{};
         };
 
     private:
@@ -190,7 +94,7 @@ namespace tls {
     protected:
         // Adds a instance_access and allocates its data.
         // Returns a pointer to the data
-        void init_thread(instance_access* t) {
+        void init_thread(instance_access* t) noexcept {
             std::scoped_lock sl(mtx_storage);
 
             t->set_next(head);
@@ -231,11 +135,11 @@ namespace tls {
 
         iterator begin() noexcept { return iterator{head}; }
         iterator end() noexcept { return iterator{}; }
-        const_iterator begin() const noexcept { return const_iterator{head}; }
-        const_iterator end() const noexcept { return const_iterator{}; }
+        iterator begin() const noexcept { return iterator{head}; }
+        iterator end() const noexcept { return iterator{}; }
 
         // Get the thread-local instance of T
-        T& local() {
+        T& local() noexcept {
             thread_local instance_access var{};
             return var.get(this);
         }

@@ -16,7 +16,7 @@ TEST_CASE("tls::splitter<> specification") {
         std::vector<int> vec(1024 * 1024, 1);
         tls::splitter<int> acc;
 
-        std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const& i) { acc.local() += i; });
+        std::for_each(/*std::execution::par,*/ vec.begin(), vec.end(), [&acc](int const& i) { acc.local() += i; });
 
         int result = std::reduce(acc.begin(), acc.end());
         REQUIRE(result == 1024 * 1024);

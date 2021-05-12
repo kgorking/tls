@@ -2,12 +2,6 @@
 #define TLS_SPLITTER_H
 
 #include <mutex>
-#include <vector>
-#include <forward_list>
-#include <algorithm>
-#ifdef _MSC_VER
-#include <new>  // for std::hardware_destructive_interference_size
-#endif
 
 namespace tls {
     // Provides a thread-local instance of the type T for each thread that
@@ -45,6 +39,7 @@ namespace tls {
                 if (owner == instance) {
 					data = {};
                     owner = nullptr;
+					next = nullptr;
                 }
             }
 
@@ -55,112 +50,141 @@ namespace tls {
 				return &data;
             }
 
+            void set_next(instance_access *ia) {
+				next = ia;
+            }
+
+            instance_access* get_next() {
+				return next;
+            }
+
+            instance_access const* get_next() const {
+				return next;
+            }
+
         private:
             T data{};
             splitter<T, UnusedDifferentiaterType>* owner{};
+			instance_access *next = nullptr;
         };
         friend instance_access;
 
         // Iterator support
-        template<class WrappedIterator>
-        class wrapper_iterator {
+        class iterator {
         public:
             // iterator traits
             using difference_type = ptrdiff_t;
             using value_type = T;
             using pointer = const value_type*;
             using reference = const value_type&;
-            using iterator_category = std::random_access_iterator_tag;
+            using iterator_category = std::forward_iterator_tag;
 
-            constexpr wrapper_iterator() noexcept {};
+            constexpr iterator() noexcept = default;
 
-            constexpr wrapper_iterator(WrappedIterator it_) noexcept
-                : it(it_) {
+            constexpr iterator(instance_access *inst_) noexcept
+                : inst(inst_) {
             }
 
-            constexpr wrapper_iterator& operator++() {
-				it++;
+            constexpr iterator(instance_access const* inst_) noexcept
+                : inst(inst_) {
+            }
+
+            constexpr iterator& operator++() {
+				inst = inst->get_next();
                 return *this;
             }
 
-            constexpr wrapper_iterator operator++(int) {
+            constexpr iterator operator++(int) {
                 iterator const retval = *this;
-				it++;
+				inst = inst->get_next();
                 return retval;
             }
 
-            constexpr wrapper_iterator& operator--() {
-				--it;
-                return *this;
+            constexpr bool operator==(iterator other) const {
+                return inst == other.inst;
             }
 
-            constexpr wrapper_iterator operator--(int) {
-                wrapper_iterator const retval = *this;
-				--it;
-                return retval;
-            }
-
-            constexpr wrapper_iterator& operator+=(difference_type diff) {
-				it += diff;
-                return *this;
-            }
-
-            constexpr wrapper_iterator& operator-=(difference_type diff) {
-                it -= diff;
-                return *this;
-            }
-
-            constexpr wrapper_iterator operator+(difference_type diff) const {
-                return it + diff;
-            }
-
-            constexpr difference_type operator-(wrapper_iterator other) const {
-                return it - other.it;
-            }
-
-            constexpr wrapper_iterator operator-(difference_type diff) const {
-                return it - diff;
-            }
-
-            constexpr bool operator==(wrapper_iterator other) const {
-                return it == other.it;
-            }
-
-            constexpr bool operator<(wrapper_iterator other) const {
-                return it < other.it;
-            }
-
-            constexpr bool operator!=(wrapper_iterator other) const {
+            constexpr bool operator!=(iterator other) const {
                 return !(*this == other);
             }
 
             constexpr value_type& operator*() {
-                return *(*it)->get_data();
-            }
-
-            constexpr value_type& operator*() const {
-                return *(*it)->get_data();
+                return *inst->get_data();
             }
 
             constexpr value_type* operator->() {
-                return (*it)->get_data();
+                return inst->get_data();
+            }
+
+            constexpr value_type& operator*() const {
+                return *inst->get_data();
             }
 
             constexpr value_type* operator->() const {
-                return (*it)->get_data();
+                return inst->get_data();
+            }
+        private:
+            instance_access *inst{};
+        };
+        class const_iterator {
+        public:
+            // iterator traits
+            using difference_type = ptrdiff_t;
+            using value_type = const T;
+            using pointer = const value_type*;
+            using reference = const value_type&;
+            using iterator_category = std::forward_iterator_tag;
+
+            constexpr const_iterator() noexcept = default;
+
+            constexpr const_iterator(instance_access const* inst_) noexcept
+                : inst(inst_) {
+            }
+
+            constexpr const_iterator& operator++() {
+				inst = inst->get_next();
+                return *this;
+            }
+
+            constexpr const_iterator operator++(int) {
+                const_iterator const retval = *this;
+				inst = inst->get_next();
+                return retval;
+            }
+
+            constexpr bool operator==(const_iterator other) const {
+                return inst == other.inst;
+            }
+
+            constexpr bool operator!=(const_iterator other) const {
+                return !(*this == other);
+            }
+
+            constexpr value_type& operator*() {
+                return *inst->get_data();
+            }
+
+            constexpr value_type* operator->() {
+                return inst->get_data();
+            }
+
+            constexpr value_type& operator*() const {
+                return *inst->get_data();
+            }
+
+            constexpr value_type* operator->() const {
+                return inst->get_data();
             }
 
         private:
-            WrappedIterator it{};
+            instance_access const* inst{};
         };
-        using iterator = wrapper_iterator<typename std::vector<instance_access*>::iterator>;
-        using const_iterator = wrapper_iterator<typename std::vector<instance_access*>::const_iterator>;
 
     private:
-        // the threads that access this instance
-        std::vector<instance_access*> instances;
+        // the head of the threads that access this splitter instance
+        instance_access head;
 
-        // Mutex for serializing access for creating/removing locals
+        // Mutex for serializing access for adding/removing thread-local instances
         std::mutex mtx_storage;
 
     protected:
@@ -169,17 +193,25 @@ namespace tls {
         void init_thread(instance_access* t) {
             std::scoped_lock sl(mtx_storage);
 
-            instances.push_back(t);
+            t->set_next(head.get_next());
+			head.set_next(t);
         }
 
         // Remove the instance_access. The data itself is preserved
         void remove_thread(instance_access* t) noexcept {
+			if (head.get_next() == nullptr)
+				return;
+
             std::scoped_lock sl(mtx_storage);
 
-            auto it = std::find(instances.begin(), instances.end(), t);
-            if (it != instances.end()) {
-                std::swap(*it, instances.back());
-                instances.pop_back();
+            auto curr = &head;
+            while(curr != nullptr) {
+                if (curr->get_next() == t) {
+					curr->set_next(t->get_next());
+					return;
+                } else {
+					curr = curr->get_next();
+                }
             }
         }
 
@@ -193,10 +225,10 @@ namespace tls {
             clear();
         }
 
-        iterator begin() noexcept { return instances.begin(); }
-        iterator end() noexcept { return instances.end(); }
-        const_iterator begin() const noexcept { return instances.begin(); }
-        const_iterator end() const noexcept { return instances.end(); }
+        iterator begin() noexcept { return iterator{&head}; }
+        iterator end() noexcept { return iterator{}; }
+        const_iterator begin() const noexcept { return const_iterator{&head}; }
+        const_iterator end() const noexcept { return const_iterator{}; }
 
         // Get the thread-local instance of T
         T& local() {
@@ -206,20 +238,13 @@ namespace tls {
 
         // Clears all the thread instances and data
         void clear() noexcept {
-            for (instance_access* instance : instances)
-                instance->remove(this);
-            instances.clear();
-        }
+			for (instance_access *instance = &head; instance != nullptr; ) {
+				auto next = instance->get_next();
+				instance->remove(this);
+				instance = next;
+			}
 
-        // Sort the data using std::less<>
-        void sort() {
-			sort(std::less<>{});
-        }
-
-        // Sort the data using supplied predicate 'bool(auto const&, auto const&)'
-        template <class Predicate>
-        void sort(Predicate&& pred) {
-			std::sort(begin(), end(), std::forward<Predicate>(pred));
+			head.set_next(nullptr);
         }
     };
 }

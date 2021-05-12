@@ -64,12 +64,12 @@ int main() {
     std::cout << "Concurrent push_back result:\n";
     dump_threaded(vec);
 
-    std::cout << "Sorted:\n";
+    /*std::cout << "Sorted:\n";
     vec.sort([](auto const& l, auto const& r) {
         return l.front() < r.front();
     });
     dump_threaded(vec);
-    std::cout << '\n';
+    std::cout << '\n';*/
 
     std::cout << "Reduced:\n";
     std::vector<int> reduced_vec = reduce(vec);

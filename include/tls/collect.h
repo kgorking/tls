@@ -16,8 +16,8 @@ class collect {
 	// This struct manages the instances that access the thread-local data.
 	// Its lifetime is marked as thread_local, which means that it can live longer than
 	// the splitter<> instance that spawned it.
-	struct instance_access {
-		~instance_access() noexcept {
+	struct thread_data {
+		~thread_data() noexcept {
 			if (owner != nullptr) {
 				owner->remove_thread(this);
 			}
@@ -25,7 +25,7 @@ class collect {
 
 		// Return a reference to an instances local data
 		T &get(collect *instance) noexcept {
-			// If the owner is null, (re-)initialize the instance.
+			// If the owner is null, (re-)initialize the thread.
 			// Data may still be present if the thread_local instance is still active
 			if (owner == nullptr) {
 				data = {};
@@ -50,26 +50,26 @@ class collect {
 			return &data;
 		}
 
-		void set_next(instance_access *ia) noexcept {
+		void set_next(thread_data *ia) noexcept {
 			next = ia;
 		}
-		instance_access *get_next() noexcept {
+		thread_data *get_next() noexcept {
 			return next;
 		}
-		instance_access const *get_next() const noexcept {
+		thread_data const *get_next() const noexcept {
 			return next;
 		}
 
 	private:
 		T data{};
 		collect *owner{};
-		instance_access *next = nullptr;
+		thread_data *next = nullptr;
 	};
-	friend instance_access;
+	friend thread_data;
 
 private:
 	// the head of the threads that access this splitter instance
-	instance_access *head{};
+	thread_data *head{};
 
 	// All the data collected from threads
 	std::vector<T> data;
@@ -78,24 +78,24 @@ private:
 	std::mutex mtx_storage;
 
 protected:
-	// Adds a instance_access
-	void init_thread(instance_access *t) noexcept {
+	// Adds a new thread
+	void init_thread(thread_data *t) noexcept {
 		std::scoped_lock sl(mtx_storage);
 
 		t->set_next(head);
 		head = t;
 	}
 
-	// Remove the instance_access
-	void remove_thread(instance_access *t) noexcept {
+	// Removes the thread
+	void remove_thread(thread_data *t) noexcept {
 		std::scoped_lock sl(mtx_storage);
 
 		// Take the thread data
-		T *thread_data = t->get_data();
-		data.push_back(std::move(*thread_data));
+		T *local_data = t->get_data();
+		data.push_back(std::move(*local_data));
 
 		// Reset the thread data
-		*thread_data = T{};
+		*local_data = T{};
 
 		// Remove the thread from the linked list
 		if (head == t) {
@@ -123,9 +123,9 @@ public:
 		clear();
 	}
 
-	// Get the thread-local instance of T
+	// Get the thread-local thread of T
 	T &local() noexcept {
-		thread_local instance_access var{};
+		thread_local thread_data var{};
 		return var.get(this);
 	}
 
@@ -133,20 +133,20 @@ public:
 	std::vector<T> gather() noexcept {
 		std::scoped_lock sl(mtx_storage);
 
-		for (instance_access *instance = head; instance != nullptr; instance = instance->get_next()) {
-			data.push_back(std::move(*instance->get_data()));
+		for (thread_data *thread = head; thread != nullptr; thread = thread->get_next()) {
+			data.push_back(std::move(*thread->get_data()));
 		}
 
 		return std::move(data);
 	}
 
-	// Perform an action on all each instance of the data
+	// Perform an action on all threads data
 	template<class Fn>
 	void for_each(Fn&& fn) {
 		std::scoped_lock sl(mtx_storage);
 
-		for (instance_access *instance = head; instance != nullptr; instance = instance->get_next()) {
-			fn(*instance->get_data());
+		for (thread_data *thread = head; thread != nullptr; thread = thread->get_next()) {
+			fn(*thread->get_data());
 		}
 
 		std::for_each(data.begin(), data.end(), fn);
@@ -156,10 +156,10 @@ public:
 	void clear() noexcept {
 		std::scoped_lock sl(mtx_storage);
 
-		for (instance_access *instance = head; instance != nullptr;) {
-			auto next = instance->get_next();
-			instance->remove(this);
-			instance = next;
+		for (thread_data *thread = head; thread != nullptr;) {
+			auto next = thread->get_next();
+			thread->remove(this);
+			thread = next;
 		}
 
 		head = nullptr;

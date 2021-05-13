@@ -4,11 +4,11 @@
 #include <chrono>
 #include <mutex>
 
-#include <tls/replicator.h>
+#include <tls/replicate.h>
 
 using namespace std::chrono_literals;
 
-void send_value(tls::replicator<int>& dest, int value) {
+void send_value(tls::replicate<int>& dest, int value) {
     std::cout << "\nmain: sending value " << value << std::endl;
     dest.write(value);
     std::this_thread::sleep_for(250ms);
@@ -19,7 +19,7 @@ int main() {
     std::mutex cout_mtx;
 
     // The replicator
-    tls::replicator<int> repl{ 1 };
+    tls::replicate<int> repl{ 1 };
 
     // The reader lambda to run on threads
     auto const reader = [&repl, &cout_mtx](int const thread_index, int const start_val) {
@@ -56,12 +56,14 @@ int main() {
         threads.emplace_back(reader, i, repl.read());
 
     // send some values
+    tls::replicate<int> other_repl{ 1 };
     for (int i = 0; i < 25; i++) {
-        send_value(repl, rand());
+        send_value(other_repl, rand());
     }
 
     // send kill code
     send_value(repl, -1);
+    send_value(other_repl, -1);
 
     for (auto& thr : threads)
         thr.join();

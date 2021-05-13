@@ -20,14 +20,6 @@ class replicate {
 			}
 		}
 
-		// Ensure this thread_data instance is initialized
-		void check_instance(replicate *repl) {
-			if (replicator == nullptr) {
-				// this is the first time it has been accessed (ie. new thread)
-				repl->init_thread(this);
-			}
-		}
-
 		void remove(replicate *repl) noexcept {
 			if (replicator == repl) {
 				data_copy = {};
@@ -80,7 +72,14 @@ class replicate {
 
 		// Check to see if the data needs updating
 		void maybe_update_data(replicate *repl) {
-			check_instance(repl);
+			// Ensure this thread_data instance is initialized
+			if (replicator == nullptr) {
+				// this is the first time it has been accessed (ie. new thread)
+				repl->init_thread(this);
+				return;
+			}
+
+			// Update local data if the main data has changed
 			if (invalidated) {
 				invalidated = false;
 
@@ -181,7 +180,7 @@ private:
 	// will be replicated threads reachable from here
 	thread_data *head{};
 
-	// The central data that is replicated to threads
+	// The main data that is replicated to threads
 	T data;
 
 	// Mutex to serialize access to 'data' when it is modified

@@ -56,14 +56,12 @@ int main() {
         threads.emplace_back(reader, i, repl.read());
 
     // send some values
-    tls::replicate<int> other_repl{ 1 };
     for (int i = 0; i < 25; i++) {
-        send_value(other_repl, rand());
+        send_value(repl, rand());
     }
 
     // send kill code
     send_value(repl, -1);
-    send_value(other_repl, -1);
 
     for (auto& thr : threads)
         thr.join();

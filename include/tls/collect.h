@@ -65,7 +65,6 @@ class collect {
 		collect *owner{};
 		thread_data *next = nullptr;
 	};
-	friend thread_data;
 
 private:
 	// the head of the threads that access this splitter instance

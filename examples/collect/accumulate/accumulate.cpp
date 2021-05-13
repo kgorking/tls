@@ -5,7 +5,7 @@
 #include <execution>
 #include <chrono>
 
-#include <tls/splitter.h>
+#include <tls/collect.h>
 
 size_t constexpr vec_size = 1024 * 1024;
 
@@ -32,12 +32,14 @@ void accumulate_test() {
     std::cout << "Concurrently accumulating content of vector\n";
     start = std::chrono::system_clock::now();
     {
-        tls::splitter<double> accumulator;
+        tls::collect<double> accumulator;
 
         std::for_each(std::execution::par, vec.begin(), vec.end(), [&accumulator](double i) {
             accumulator.local() += cbrt(i);
         });
-        double result = std::accumulate(accumulator.begin(), accumulator.end(), 0.0);
+
+        double result = 0;
+		accumulator.for_each([&result](double val) { result += val; });
 
         auto time2 = std::chrono::system_clock::now() - start;
         std::cout << " result avg:    " << result / vec.size() << "\n";

@@ -52,10 +52,10 @@ if (TLS_STANDALONE_PROJECT)
     #add_subdirectory ("benchmark")
 
     # Examples
-    add_subdirectory ("examples/splitter/accumulate")
-    add_subdirectory ("examples/splitter/concurrent_fill_vector")
-    add_subdirectory ("examples/splitter/custom_combiner")
-    add_subdirectory ("examples/replicator")
+    add_subdirectory ("examples/collect/accumulate")
+    add_subdirectory ("examples/collect/concurrent_fill_vector")
+    add_subdirectory ("examples/collect/custom_combiner")
+    add_subdirectory ("examples/replicate")
     add_subdirectory ("examples/cache")
 
     # Unittests

@@ -93,7 +93,6 @@ class replicate {
 		thread_data *next{nullptr};
 		bool invalidated{true};
 	};
-	friend thread_data;
 
 	// Store a thread_data in this repl
 	void init_thread(thread_data *t) {

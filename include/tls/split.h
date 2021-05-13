@@ -16,10 +16,10 @@ class split {
 	// This struct manages the instances that access the thread-local data.
 	// Its lifetime is marked as thread_local, which means that it can live longer than
 	// the split<> instance that spawned it.
-	struct instance_access {
+	struct thread_data {
 		// The destructor triggers when a thread dies and the thread_local
 		// instance is destroyed
-		~instance_access() noexcept {
+		~thread_data() noexcept {
 			if (owner != nullptr) {
 				owner->remove_thread(this);
 			}
@@ -52,41 +52,40 @@ class split {
 			return &data;
 		}
 
-		void set_next(instance_access *ia) noexcept {
+		void set_next(thread_data *ia) noexcept {
 			next = ia;
 		}
-		instance_access *get_next() noexcept {
+		thread_data *get_next() noexcept {
 			return next;
 		}
-		instance_access const *get_next() const noexcept {
+		thread_data const *get_next() const noexcept {
 			return next;
 		}
 
 	private:
 		T data{};
 		split<T, UnusedDifferentiaterType> *owner{};
-		instance_access *next = nullptr;
+		thread_data *next = nullptr;
 	};
-	friend instance_access;
 
 private:
 	// the head of the threads that access this split instance
-	instance_access *head{};
+	thread_data *head{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
 	std::mutex mtx_storage;
 
 protected:
-	// Adds a instance_access
-	void init_thread(instance_access *t) noexcept {
+	// Adds a thread_data
+	void init_thread(thread_data *t) noexcept {
 		std::scoped_lock sl(mtx_storage);
 
 		t->set_next(head);
 		head = t;
 	}
 
-	// Remove the instance_access
-	void remove_thread(instance_access *t) noexcept {
+	// Remove the thread_data
+	void remove_thread(thread_data *t) noexcept {
 		std::scoped_lock sl(mtx_storage);
 
 		// Remove the thread from the linked list
@@ -117,7 +116,7 @@ public:
 
 	// Get the thread-local instance of T
 	T &local() noexcept {
-		thread_local instance_access var{};
+		thread_local thread_data var{};
 		return var.get(this);
 	}
 
@@ -126,7 +125,7 @@ public:
 	void for_each(Fn&& fn) {
 		std::scoped_lock sl(mtx_storage);
 
-		for (instance_access *instance = head; instance != nullptr; instance = instance->get_next()) {
+		for (thread_data *instance = head; instance != nullptr; instance = instance->get_next()) {
 			fn(*instance->get_data());
 		}
 	}
@@ -135,7 +134,7 @@ public:
 	void clear() noexcept {
 		std::scoped_lock sl(mtx_storage);
 
-		for (instance_access *instance = head; instance != nullptr;) {
+		for (thread_data *instance = head; instance != nullptr;) {
 			auto next = instance->get_next();
 			instance->remove(this);
 			instance = next;

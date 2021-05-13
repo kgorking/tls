@@ -4,7 +4,7 @@
 #include <numeric>
 #include <thread>
 
-#include <tls/splitter.h>
+#include <tls/collect.h>
 
 // Dumps the content of a vector
 void dump(std::vector<int> const& v) {
@@ -46,7 +46,7 @@ int main() {
     std::cout << '\n' << '\n';
 
     // Run some concurrent code that would normally create a data race
-    tls::splitter<std::vector<int>> vec;
+    tls::collect<std::vector<int>> vec;
     auto const worker = [&vec, chunk_size](int start) {
         auto& local = vec.local();
         for (int i = start; i < start + chunk_size; i++)
@@ -63,7 +63,7 @@ int main() {
 	}
 
     std::cout << "Concurrent push_back result:\n";
-	auto const collect = vec.collect();
+	auto const collect = vec.gather();
     dump_threaded(collect);
 
     std::cout << "Reduced:\n";

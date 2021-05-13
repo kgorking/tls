@@ -1,23 +1,24 @@
-#ifndef TLS_SPLITTER_H
-#define TLS_SPLITTER_H
+#ifndef TLS_SPLIT_H
+#define TLS_SPLIT_H
 
 #include <mutex>
-#include <vector>
 
 namespace tls {
 // Provides a thread-local instance of the type T for each thread that
-// accesses it. This avoid having to use locks to read/write data.
-// This class only locks when a new thread is created/destroyed.
-// The set of instances can be accessed through the begin()/end() iterators.
-// Note: Two splitter<T> instances in the same thread will point to the same data.
+// accesses it. Data is not preserved when threads die.
+// This class locks when a thread is created/destroyed.
+// The thread_local T's can be accessed through split::for_each.
+// Note: Two split<T> instances in the same thread will point to the same data.
 //       Differentiate between them by passing different types to 'UnusedDifferentiaterType'.
 //       As the name implies, it's not used internally, so just put whatever.
-template <typename T, typename UnusedDifferentiaterType = struct o_O>
-class splitter {
+template <typename T, typename UnusedDifferentiaterType = void>
+class split {
 	// This struct manages the instances that access the thread-local data.
 	// Its lifetime is marked as thread_local, which means that it can live longer than
-	// the splitter<> instance that spawned it.
+	// the split<> instance that spawned it.
 	struct instance_access {
+		// The destructor triggers when a thread dies and the thread_local
+		// instance is destroyed
 		~instance_access() noexcept {
 			if (owner != nullptr) {
 				owner->remove_thread(this);
@@ -25,7 +26,7 @@ class splitter {
 		}
 
 		// Return a reference to an instances local data
-		T &get(splitter<T, UnusedDifferentiaterType> *instance) noexcept {
+		T &get(split *instance) noexcept {
 			// If the owner is null, (re-)initialize the instance.
 			// Data may still be present if the thread_local instance is still active
 			if (owner == nullptr) {
@@ -36,7 +37,7 @@ class splitter {
 			return data;
 		}
 
-		void remove(splitter<T, UnusedDifferentiaterType> *instance) noexcept {
+		void remove(split *instance) noexcept {
 			if (owner == instance) {
 				data = {};
 				owner = nullptr;
@@ -63,17 +64,14 @@ class splitter {
 
 	private:
 		T data{};
-		splitter<T, UnusedDifferentiaterType> *owner{};
+		split<T, UnusedDifferentiaterType> *owner{};
 		instance_access *next = nullptr;
 	};
 	friend instance_access;
 
 private:
-	// the head of the threads that access this splitter instance
+	// the head of the threads that access this split instance
 	instance_access *head{};
-
-	// All the data collected from threads
-	std::vector<T> data;
 
 	// Mutex for serializing access for adding/removing thread-local instances
 	std::mutex mtx_storage;
@@ -90,9 +88,6 @@ protected:
 	// Remove the instance_access
 	void remove_thread(instance_access *t) noexcept {
 		std::scoped_lock sl(mtx_storage);
-
-		// Take the thread data
-		data.push_back(std::move(*t->get_data()));
 
 		// Remove the thread from the linked list
 		if (head == t) {
@@ -111,12 +106,12 @@ protected:
 	}
 
 public:
-	splitter() noexcept = default;
-	splitter(splitter const &) = delete;
-	splitter(splitter &&) noexcept = default;
-	splitter &operator=(splitter const &) = delete;
-	splitter &operator=(splitter &&) noexcept = default;
-	~splitter() noexcept {
+	split() noexcept = default;
+	split(split const &) = delete;
+	split(split &&) noexcept = default;
+	split &operator=(split const &) = delete;
+	split &operator=(split &&) noexcept = default;
+	~split() noexcept {
 		clear();
 	}
 
@@ -124,17 +119,6 @@ public:
 	T &local() noexcept {
 		thread_local instance_access var{};
 		return var.get(this);
-	}
-
-	// Collects all the threads data and returns it. This clears the stored data.
-	std::vector<T> collect() noexcept {
-		std::scoped_lock sl(mtx_storage);
-
-		for (instance_access *instance = head; instance != nullptr; instance = instance->get_next()) {
-			data.push_back(std::move(*instance->get_data()));
-		}
-
-		return std::move(data);
 	}
 
 	// Performa an action on all each instance of the data
@@ -145,8 +129,6 @@ public:
 		for (instance_access *instance = head; instance != nullptr; instance = instance->get_next()) {
 			fn(*instance->get_data());
 		}
-
-		std::for_each(data.begin(), data.end(), fn);
 	}
 
 	// Clears all data and threads
@@ -165,4 +147,4 @@ public:
 };
 } // namespace tls
 
-#endif // !TLS_SPLITTER_H
+#endif // !TLS_SPLIT_H

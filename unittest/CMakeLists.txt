@@ -4,7 +4,7 @@ add_executable (unittests
 	"unittest.cpp"
 	"catch.hpp"
 
-	"splitter/splitter.cpp"
+	"collect/collect.cpp"
 	"cache/unittest.cpp")
 target_link_libraries(unittests tls)
 

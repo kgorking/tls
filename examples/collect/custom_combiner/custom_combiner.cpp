@@ -4,14 +4,14 @@
 #include <algorithm>
 #include <execution>
 
-#include <tls/splitter.h>
+#include <tls/collect.h>
 
 // Calculate the square root of elements in a vector
 int main() {
     std::vector<double> input(64 * 1024 /** 1024*/);
     std::generate(std::begin(input), std::end(input), rand);
 
-    tls::splitter<std::vector<double>> vec;
+    tls::collect<std::vector<double>> vec;
     std::for_each(std::execution::par, input.begin(), input.end(), [&vec](double val) {
         vec.local().push_back(sqrt(val));
     });

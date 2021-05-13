@@ -142,7 +142,6 @@ public:
 		}
 
 		head = nullptr;
-		data.clear();
 	}
 };
 } // namespace tls

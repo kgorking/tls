@@ -42,7 +42,7 @@ class replicate {
 
 		// Pass the local data to a user function
 		template <class Fn>
-		auto read(replicate *repl, Fn f) {
+		auto read(replicate *repl, Fn&& f) {
 			maybe_update_data(repl);
 
 			// Only pass const-ref data to the function
@@ -151,8 +151,8 @@ public:
 
 	// Pass the threads copy of data to a user function
 	template <class Fn>
-	auto read(Fn f) {
-		return local().read(this, f);
+	auto read(Fn&& f) {
+		return local().read(this, std::forward<Fn>(f));
 	}
 
 	// Set the master data

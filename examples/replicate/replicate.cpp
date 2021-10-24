@@ -11,7 +11,7 @@ using namespace std::chrono_literals;
 void send_value(tls::replicate<int>& dest, int value) {
     std::cout << "\nmain: sending value " << value << std::endl;
     dest.write(value);
-    std::this_thread::sleep_for(250ms);
+    std::this_thread::sleep_for(1000ms);
 }
 
 int main() {
@@ -42,21 +42,18 @@ int main() {
                 num_reads = 0;
             }
 
-            //std::this_thread::sleep_for(5ms);
-            std::this_thread::yield(); // will peg the cpu at 100% utilization
-
             num_reads++;
         }
     };
 
     // Fire up some threads
-    int const num_threads = std::thread::hardware_concurrency();
+    int const num_threads = 3; //std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     for (int i = 1; i <= num_threads; i++)
-        threads.emplace_back(reader, i, repl.read());
+        threads.emplace_back(reader, i, repl.base_data());
 
     // send some values
-    for (int i = 0; i < 25; i++) {
+    for (int i = 0; i < 10; i++) {
         send_value(repl, rand());
     }
 

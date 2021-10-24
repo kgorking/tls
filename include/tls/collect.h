@@ -148,7 +148,7 @@ public:
 			fn(*thread->get_data());
 		}
 
-		std::for_each(data.begin(), data.end(), fn);
+		std::for_each(data.begin(), data.end(), std::forward<Fn>(fn));
 	}
 
 	// Clears all data and threads

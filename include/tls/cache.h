@@ -24,8 +24,8 @@ public:
 	template <class Fn>
 	constexpr Value get_or(Key const k, Fn or_fn) {
 		size_t index = num_entries;
-		size_t i = 0;
-		for (; i < num_entries; i++) {
+		for (size_t i = 0; i < num_entries; i++) {
+			// no break generates cmov's instead of jumps
 			if (k == keys[i])
 				index = i;
 		}

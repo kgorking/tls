@@ -22,7 +22,7 @@ void dump_threaded(std::vector<std::vector<int>> const& threaded_vec) {
 }
 
 // Merges all the threaded vectors in to a single vector
-std::vector<int> reduce(std::vector<std::vector<int>> const& threaded_vec) {
+std::vector<int> flatten(std::vector<std::vector<int>> const& threaded_vec) {
     std::vector<int> vec;
     for (auto const& t_vec : threaded_vec) {
         vec.insert(vec.end(), t_vec.begin(), t_vec.end());
@@ -32,7 +32,7 @@ std::vector<int> reduce(std::vector<std::vector<int>> const& threaded_vec) {
 
 int main() {
     int const num_threads = std::thread::hardware_concurrency();
-    int const chunk_size = 24;
+    int const chunk_size = 10;
     int const num_inputs = num_threads * chunk_size;
 
     std::cout << "Concurently push_back data from one vector to another.\n";
@@ -66,8 +66,8 @@ int main() {
 	auto const collect = vec.gather();
     dump_threaded(collect);
 
-    std::cout << "Reduced:\n";
-    std::vector<int> reduced_vec = reduce(collect);
+    std::cout << "Flattened:\n";
+    std::vector<int> reduced_vec = flatten(collect);
     dump(reduced_vec);
     std::cout << '\n' << '\n';
 

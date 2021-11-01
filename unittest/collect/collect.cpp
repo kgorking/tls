@@ -23,6 +23,18 @@ TEST_CASE("tls::collect<> specification") {
         REQUIRE(result == 1024 * 1024);
     }
 
+    SECTION("gather cleans up properly") {
+        std::vector<int> vec(1024, 1);
+        tls::collect<int> acc;
+
+        std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const& i) { acc.local() += i; });
+
+        (void) acc.gather();
+		acc.for_each([](int const& i) {
+			REQUIRE(i == 0);
+		});
+    }
+
     SECTION("clearing after use cleans up properly") {
         std::vector<int> vec(1024, 1);
         tls::collect<int> acc;

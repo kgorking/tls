@@ -134,6 +134,7 @@ public:
 
 		for (thread_data *thread = head; thread != nullptr; thread = thread->get_next()) {
 			data.push_back(std::move(*thread->get_data()));
+			*thread->get_data() = T{};
 		}
 
 		return std::move(data);

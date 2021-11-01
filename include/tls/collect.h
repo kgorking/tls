@@ -119,7 +119,7 @@ public:
 	collect &operator=(collect const &) = delete;
 	collect &operator=(collect &&) noexcept = default;
 	~collect() noexcept {
-		clear();
+		reset();
 	}
 
 	// Get the thread-local thread of T
@@ -152,8 +152,8 @@ public:
 		std::for_each(data.begin(), data.end(), std::forward<Fn>(fn));
 	}
 
-	// Clears all data and threads
-	void clear() noexcept {
+	// Resets all data and threads
+	void reset() noexcept {
 		std::scoped_lock sl(mtx_storage);
 
 		for (thread_data *thread = head; thread != nullptr;) {

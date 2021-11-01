@@ -29,22 +29,20 @@ TEST_CASE("tls::collect<> specification") {
 
         std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const& i) { acc.local() += i; });
 
+        acc.for_each([](int const& i) { REQUIRE(i > 0); });
         (void) acc.gather();
-		acc.for_each([](int const& i) {
-			REQUIRE(i == 0);
-		});
-    }
+		acc.for_each([](int const& i) { REQUIRE(i == 0); });
+	}
 
-    SECTION("clearing after use cleans up properly") {
+    SECTION("reseting after use cleans up properly") {
         std::vector<int> vec(1024, 1);
         tls::collect<int> acc;
 
         std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const& i) { acc.local() += i; });
-        acc.clear();
+        acc.reset();
 
         auto const collect = acc.gather();
-        int result = std::reduce(collect.begin(), collect.end());
-        REQUIRE(result == 0);
+        REQUIRE(collect.size() == 0);
     }
 
     SECTION("multiple instances in same scope points to the same data") {

@@ -141,12 +141,7 @@ public:
 	}
 
 	// Gathers all the threads data and sends it to the output iterator. This clears all stored data.
-	void gather_flattened(std::output_iterator<typename T::value_type> auto dest) noexcept
-		requires requires {
-			&T::begin;
-			&T::end;
-		}
-	{
+	void gather_flattened(std::output_iterator<typename T::value_type> auto dest) noexcept {
 		std::scoped_lock sl(mtx_storage);
 
 		for (T& t : data) {

@@ -128,7 +128,7 @@ public:
 		return var.get(this);
 	}
 
-	// Gethers all the threads data and returns it. This clears all stored data.
+	// Gathers all the threads data and returns it. This clears all stored data.
 	std::vector<T> gather() noexcept {
 		std::scoped_lock sl(mtx_storage);
 

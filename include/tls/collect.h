@@ -140,6 +140,27 @@ public:
 		return std::move(data);
 	}
 
+	// Gathers all the threads data and sends it to the output iterator. This clears all stored data.
+	void gather_flattened(std::output_iterator<typename T::value_type> auto dest) noexcept
+		requires requires {
+			&T::begin;
+			&T::end;
+		}
+	{
+		std::scoped_lock sl(mtx_storage);
+
+		for (T& t : data) {
+			std::move(t.begin(), t.end(), dest);
+		}
+		data.clear();
+
+		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+			T* ptr_t = thread->get_data();
+			std::move(ptr_t->begin(), ptr_t->end(), dest);
+			*ptr_t = T{};
+		}
+	}
+
 	// Perform an action on all threads data
 	template<class Fn>
 	void for_each(Fn&& fn) {

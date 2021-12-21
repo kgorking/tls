@@ -9,9 +9,11 @@ namespace tls {
 // Works like tls::split, except data is preserved when threads die.
 // You can collect the thread_local T's with collect::gather,
 // which also resets the data on the threads by moving it.
-// Note: Two collect<T> instances in the same thread will point to the same data.
-//       Differentiate between them by passing different types to 'UnusedDifferentiaterType'.
-//       As the name implies, it's not used internally, so just put whatever.
+// Note: Two runtime collect<T> instances in the same thread will point to the same data.
+//       If they are evaluated in a constant context each instance has their own data.
+//       Differentiate between runtime versions by passing different types to 'UnusedDifferentiaterType',
+// 	     so fx collect<int, struct A> is different from collect<int, struct B>.
+//       As the name implies, 'UnusedDifferentiaterType' is not used internally, so just put whatever.
 template <typename T, typename UnusedDifferentiaterType = void>
 class collect {
 	// This struct manages the instances that access the thread-local data.

@@ -75,13 +75,14 @@ private:
 	// All the data collected from threads
 	std::vector<T> data{};
 
+	// Mutex for serializing access for adding/removing thread-local instances
+	std::mutex* mtx_ptr{};
+
 	// Data that is only used in constexpr evaluations
 	thread_data consteval_data;
 
-	// Mutex for serializing access for adding/removing thread-local instances
 	[[nodiscard]] std::mutex& get_runtime_mutex() noexcept {
-		static std::mutex s_mtx{};
-		return s_mtx;
+		return *mtx_ptr;
 	}
 
 	// Adds a new thread
@@ -134,13 +135,19 @@ private:
 	}
 
 public:
-	constexpr collect() noexcept {}
+	constexpr collect() noexcept {
+		if (!std::is_constant_evaluated())
+			mtx_ptr = new std::mutex{};
+	}
 	constexpr collect(collect const&) = delete;
 	constexpr collect(collect&&) noexcept = default;
 	constexpr collect& operator=(collect const&) = delete;
 	constexpr collect& operator=(collect&&) noexcept = default;
 	constexpr ~collect() noexcept {
 		reset();
+
+		if (!std::is_constant_evaluated())
+			delete mtx_ptr;
 	}
 
 	// Get the thread-local thread of T

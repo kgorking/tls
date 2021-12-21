@@ -2,7 +2,6 @@
 #define TLS_COLLECT_H
 
 #include <mutex>
-#include <variant>
 #include <vector>
 
 namespace tls {

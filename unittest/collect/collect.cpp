@@ -84,13 +84,21 @@ TEST_CASE("tls::collect<> specification") {
 
 	SECTION("does not cause data races") {
 		std::vector<int> vec(1024 * 1024, 1);
-		tls::collect<int> acc;
+		tls::collect<int, struct A> acc1;
+		tls::collect<int, struct B> acc2;
 
-		std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const i) { acc.local() += i; });
+		std::for_each(std::execution::par, vec.begin(), vec.end(), [&](int const i) {
+			acc1.local() += 1*i;
+			acc2.local() += 2*i;
+		});
 
-		auto const collect = acc.gather();
-		int result = std::reduce(collect.begin(), collect.end());
-		REQUIRE(result == 1024 * 1024);
+		auto collect = acc1.gather();
+		int result1 = std::reduce(collect.begin(), collect.end());
+		REQUIRE(result1 == 1024 * 1024);
+
+		collect = acc2.gather();
+		int result2 = std::reduce(collect.begin(), collect.end());
+		REQUIRE(result2 == 2 * 1024 * 1024);
 	}
 
 	SECTION("gather cleans up properly") {

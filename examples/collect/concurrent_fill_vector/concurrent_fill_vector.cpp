@@ -47,7 +47,7 @@ int main() {
 
     // Run some concurrent code that would normally create a data race
     tls::collect<std::vector<int>> vec;
-    auto const worker = [&vec, chunk_size](int start) {
+    auto const worker = [&](int start) {
         auto& local = vec.local();
         for (int i = start; i < start + chunk_size; i++)
             local.push_back(i);

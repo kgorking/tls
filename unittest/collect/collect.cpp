@@ -45,7 +45,7 @@ constexpr bool test_reset() {
 constexpr bool test_gather_flatten() {
 	std::vector<int> vec(17 /*std::thread::hardware_concurrency()*/, 1);
 	tls::collect<std::vector<int>> collector;
-	int counter = 0;
+	size_t counter = 0;
 
 	std::for_each(/*std::execution::par,*/ vec.begin(), vec.end(), [&](int const) {
 		collector.local().push_back(2);

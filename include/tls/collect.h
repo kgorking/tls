@@ -176,16 +176,16 @@ public:
 	}
 
 	// Gathers all the threads data and sends it to the output iterator. This clears all stored data.
-	[[nodiscard]] constexpr void gather_flattened(std::output_iterator<typename T::value_type> auto dest) noexcept {
+	constexpr void gather_flattened(auto dest_iterator) noexcept {
 		auto const gather_flattened_impl = [&]() noexcept {
 			for (T& t : data) {
-				std::move(t.begin(), t.end(), dest);
+				std::move(t.begin(), t.end(), dest_iterator);
 			}
 			data.clear();
 
 			for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
 				T* ptr_t = thread->get_data();
-				std::move(ptr_t->begin(), ptr_t->end(), dest);
+				std::move(ptr_t->begin(), ptr_t->end(), dest_iterator);
 				*ptr_t = T{};
 			}
 		};

@@ -76,6 +76,7 @@ private:
 	// All the data collected from threads
 	std::vector<T> data{};
 
+	// Data that is only used in constexpr evaluations
 	thread_data consteval_data;
 
 	// Mutex for serializing access for adding/removing thread-local instances

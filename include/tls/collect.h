@@ -2,6 +2,7 @@
 #define TLS_COLLECT_H
 
 #include <mutex>
+#include <shared_mutex>
 #include <vector>
 
 namespace tls {
@@ -76,12 +77,12 @@ private:
 	std::vector<T> data{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
-	std::mutex* mtx_ptr{};
+	std::shared_mutex* mtx_ptr{};
 
 	// Data that is only used in constexpr evaluations
 	thread_data consteval_data;
 
-	[[nodiscard]] std::mutex& get_runtime_mutex() noexcept {
+	[[nodiscard]] std::shared_mutex& get_runtime_mutex() noexcept {
 		return *mtx_ptr;
 	}
 
@@ -137,7 +138,7 @@ private:
 public:
 	constexpr collect() noexcept {
 		if (!std::is_constant_evaluated())
-			mtx_ptr = new std::mutex{};
+			mtx_ptr = new std::shared_mutex{};
 	}
 	constexpr collect(collect const&) = delete;
 	constexpr collect(collect&&) noexcept = default;

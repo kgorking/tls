@@ -2,6 +2,7 @@
 #define TLS_SPLIT_H
 
 #include <mutex>
+#include <shared_mutex>
 
 namespace tls {
 // Provides a thread-local instance of the type T for each thread that
@@ -73,13 +74,13 @@ private:
 	thread_data *head{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
-	std::mutex* mtx_storage{};
+	std::shared_mutex* mtx_storage{};
 
 	// Data that is only used in constexpr evaluations
 	thread_data consteval_data{};
 
 protected:
-	[[nodiscard]] std::mutex& get_runtime_mutex() noexcept {
+	[[nodiscard]] std::shared_mutex& get_runtime_mutex() noexcept {
 		return *mtx_storage;
 	}
 
@@ -128,7 +129,7 @@ protected:
 public:
 	constexpr split() noexcept {
 		if (!std::is_constant_evaluated())
-			mtx_storage = new std::mutex;
+			mtx_storage = new std::shared_mutex;
 	}
 	constexpr split(split const&) = delete;
 	constexpr split(split&&) noexcept = default;

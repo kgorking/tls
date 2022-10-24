@@ -70,180 +70,113 @@ class collect {
 	};
 
 private:
-	// the head of the threads that access this splitter instance
+	// the head of the threads that access this collect instance
 	thread_data* head{};
 
 	// All the data collected from threads
 	std::vector<T> data{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
-	std::shared_mutex* mtx_ptr{};
-
-	// Data that is only used in constexpr evaluations
-	thread_data consteval_data;
-
-	[[nodiscard]] std::shared_mutex& get_runtime_mutex() noexcept {
-		return *mtx_ptr;
-	}
+	std::shared_mutex mtx;
 
 	// Adds a new thread
-	constexpr void init_thread(thread_data* t) noexcept {
-		auto const init_thread_imp = [&]() noexcept {
-			t->set_next(head);
-			head = t;
-		};
-
-		if (!std::is_constant_evaluated()) {
-			std::scoped_lock sl(get_runtime_mutex());
-			init_thread_imp();
-		} else {
-			init_thread_imp();
-		}
+	void init_thread(thread_data* t) noexcept {
+		std::scoped_lock sl(mtx);
+		t->set_next(head);
+		head = t;
 	}
 
 	// Removes the thread
-	constexpr void remove_thread(thread_data* t) noexcept {
-		auto const remove_thread_impl = [&]() noexcept {
-			// Take the thread data
-			T* local_data = t->get_data();
-			data.push_back(std::move(*local_data));
+	void remove_thread(thread_data* t) noexcept {
+		std::scoped_lock sl(mtx);
 
-			// Reset the thread data
-			*local_data = T{};
+		// Take the thread data
+		T* local_data = t->get_data();
+		data.push_back(std::move(*local_data));
 
-			// Remove the thread from the linked list
-			if (head == t) {
-				head = t->get_next();
-			} else {
-				auto curr = head;
-				while (curr->get_next() != nullptr) {
-					if (curr->get_next() == t) {
-						curr->set_next(t->get_next());
-						return;
-					} else {
-						curr = curr->get_next();
-					}
+		// Reset the thread data
+		*local_data = T{};
+
+		// Remove the thread from the linked list
+		if (head == t) {
+			head = t->get_next();
+		} else {
+			auto curr = head;
+			while (curr->get_next() != nullptr) {
+				if (curr->get_next() == t) {
+					curr->set_next(t->get_next());
+					return;
+				} else {
+					curr = curr->get_next();
 				}
 			}
-		};
-
-		if (!std::is_constant_evaluated()) {
-			std::scoped_lock sl(get_runtime_mutex());
-			remove_thread_impl();
-		} else {
-			remove_thread_impl();
 		}
 	}
 
 public:
-	constexpr collect() noexcept {
-		if (!std::is_constant_evaluated())
-			mtx_ptr = new std::shared_mutex{};
-	}
-	constexpr collect(collect const&) = delete;
-	constexpr collect(collect&&) noexcept = default;
-	constexpr collect& operator=(collect const&) = delete;
-	constexpr collect& operator=(collect&&) noexcept = default;
-	constexpr ~collect() noexcept {
+	collect() noexcept = default;
+	collect(collect const&) = delete;
+	collect(collect&&) noexcept = default;
+	collect& operator=(collect const&) = delete;
+	collect& operator=(collect&&) noexcept = default;
+	~collect() noexcept {
 		reset();
-
-		if (!std::is_constant_evaluated())
-			delete mtx_ptr;
 	}
 
 	// Get the thread-local thread of T
-	[[nodiscard]] constexpr T& local() noexcept {
-		if (!std::is_constant_evaluated()) {
-			auto const local_impl = [&]() -> T& {
-				thread_local thread_data var{};
-				return var.get(this);
-			};
-			return local_impl();
-		} else {
-			return consteval_data.get(this);
-		}
+	[[nodiscard]] T& local() noexcept {
+		thread_local thread_data var{};
+		return var.get(this);
 	}
 
 	// Gathers all the threads data and returns it. This clears all stored data.
-	[[nodiscard]] constexpr std::vector<T> gather() noexcept {
-		auto const gather_impl = [&]() noexcept {
-			for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
-				data.push_back(std::move(*thread->get_data()));
-				*thread->get_data() = T{};
-			}
-
-			return std::move(data);
-		};
-
-		if (!std::is_constant_evaluated()) {
-			std::scoped_lock sl(get_runtime_mutex());
-			return gather_impl();
-		} else {
-			return gather_impl();
+	[[nodiscard]] std::vector<T> gather() noexcept {
+		std::scoped_lock sl(mtx);
+		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+			data.push_back(std::move(*thread->get_data()));
+			*thread->get_data() = T{};
 		}
+
+		return std::move(data);
 	}
 
 	// Gathers all the threads data and sends it to the output iterator. This clears all stored data.
-	constexpr void gather_flattened(auto dest_iterator) noexcept {
-		auto const gather_flattened_impl = [&]() noexcept {
-			for (T& t : data) {
-				std::move(t.begin(), t.end(), dest_iterator);
-			}
-			data.clear();
+	void gather_flattened(auto dest_iterator) noexcept {
+		std::scoped_lock sl(mtx);
+		for (T& t : data) {
+			std::move(t.begin(), t.end(), dest_iterator);
+		}
+		data.clear();
 
-			for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
-				T* ptr_t = thread->get_data();
-				std::move(ptr_t->begin(), ptr_t->end(), dest_iterator);
-				*ptr_t = T{};
-			}
-		};
-
-		if (!std::is_constant_evaluated()) {
-			std::scoped_lock sl(get_runtime_mutex());
-			gather_flattened_impl();
-		} else {
-			gather_flattened_impl();
+		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+			T* ptr_t = thread->get_data();
+			std::move(ptr_t->begin(), ptr_t->end(), dest_iterator);
+			*ptr_t = T{};
 		}
 	}
 
 	// Perform an action on all threads data
 	template <class Fn>
-	constexpr void for_each(Fn&& fn) noexcept {
-		auto const for_each_impl = [&]() noexcept {
-			for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
-				fn(*thread->get_data());
-			}
-
-			std::for_each(data.begin(), data.end(), std::forward<Fn>(fn));
-		};
-
-		if (!std::is_constant_evaluated()) {
-			std::scoped_lock sl(get_runtime_mutex());
-			for_each_impl();
-		} else {
-			for_each_impl();
+	void for_each(Fn&& fn) noexcept {
+		std::scoped_lock sl(mtx);
+		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+			fn(*thread->get_data());
 		}
+
+		std::for_each(data.begin(), data.end(), std::forward<Fn>(fn));
 	}
 
 	// Resets all data and threads
-	constexpr void reset() noexcept {
-		auto const reset_impl = [&]() noexcept {
-			for (thread_data* thread = head; thread != nullptr;) {
-				auto next = thread->get_next();
-				thread->remove(this);
-				thread = next;
-			}
-
-			head = nullptr;
-			data.clear();
-		};
-
-		if (!std::is_constant_evaluated()) {
-			std::scoped_lock sl(get_runtime_mutex());
-			reset_impl();
-		} else {
-			reset_impl();
+	void reset() noexcept {
+		std::scoped_lock sl(mtx);
+		for (thread_data* thread = head; thread != nullptr;) {
+			auto next = thread->get_next();
+			thread->remove(this);
+			thread = next;
 		}
+
+		head = nullptr;
+		data.clear();
 	}
 };
 } // namespace tls

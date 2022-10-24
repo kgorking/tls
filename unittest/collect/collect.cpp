@@ -2,77 +2,7 @@
 #include <execution>
 #include <tls/collect.h>
 
-constexpr bool test_constexpr() {
-	tls::collect<int> ce_test;
-	return true;
-}
-
-constexpr bool test_for_each() {
-	tls::collect<int> ce_test;
-	ce_test.local() = 4;
-
-	// test for_each
-	bool check_for_each = true;
-	ce_test.for_each([&check_for_each](int i) { check_for_each = check_for_each && (i == 4); });
-	return check_for_each;
-}
-
-constexpr bool test_gather() {
-	std::vector<int> vec(10, 1);
-	tls::collect<int> acc;
-
-	// for_each with an execution policy is not constexpr, for obv. reasons
-	std::for_each(/*std::execution::par,*/ vec.begin(), vec.end(), [&acc](int const i) { acc.local() += i; });
-
-	bool is_val_ten = true;
-	acc.for_each([&is_val_ten](int const& i) { is_val_ten = is_val_ten && (i == 10); });
-
-	auto const gathered = acc.gather();
-	return gathered.size() == 1 && gathered.front() == 10 && acc.local() == int{};
-}
-
-constexpr bool test_reset() {
-	std::vector<int> vec(1024, 1);
-	tls::collect<int> acc;
-
-	std::for_each(vec.begin(), vec.end(), [&acc](int const i) { acc.local() += i; });
-	acc.reset();
-
-	auto const collect = acc.gather();
-	return 0 == collect.size();
-}
-
-constexpr bool test_gather_flatten() {
-	std::vector<int> vec(17 /*std::thread::hardware_concurrency()*/, 1);
-	tls::collect<std::vector<int>> collector;
-	size_t counter = 0;
-
-	std::for_each(/*std::execution::par,*/ vec.begin(), vec.end(), [&](int const) {
-		collector.local().push_back(2);
-		counter += 1;
-	});
-
-	vec.clear();
-	collector.gather_flattened(std::back_inserter(vec));
-	if (vec.size() != counter)
-		return false;
-
-	for (int i : vec)
-		if (2 != i)
-			return false;
-	return true;
-}
-
-
 TEST_CASE("tls::collect<> specification") {
-	SECTION("constexpr friendly") {
-		static_assert(test_constexpr());
-		static_assert(test_for_each());
-		static_assert(test_gather());
-		static_assert(test_reset());
-		static_assert(test_gather_flatten());
-	}
-
 	SECTION("new instances are default initialized") {
 		struct test {
 			int x = 4;

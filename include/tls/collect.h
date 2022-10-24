@@ -1,7 +1,6 @@
 #ifndef TLS_COLLECT_H
 #define TLS_COLLECT_H
 
-#include <mutex>
 #include <shared_mutex>
 #include <vector>
 
@@ -92,7 +91,7 @@ private:
 
 		// Take the thread data
 		T* local_data = t->get_data();
-		data.push_back(std::move(*local_data));
+		data.push_back(static_cast<T&&>(*local_data));
 
 		// Reset the thread data
 		*local_data = T{};
@@ -137,21 +136,32 @@ public:
 			*thread->get_data() = T{};
 		}
 
-		return std::move(data);
+		return static_cast<std::vector<T>&&>(data);
 	}
 
 	// Gathers all the threads data and sends it to the output iterator. This clears all stored data.
 	void gather_flattened(auto dest_iterator) noexcept {
 		std::scoped_lock sl(mtx);
-		for (T& t : data) {
-			std::move(t.begin(), t.end(), dest_iterator);
+		using U = typename T::value_type;
+
+		for (T& per_thread_data : data) {
+			//std::move(t.begin(), t.end(), dest_iterator);
+			for (U& elem : per_thread_data) {
+				*dest_iterator = static_cast<U&&>(elem);
+				++dest_iterator;
+			}
 		}
 		data.clear();
 
 		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
-			T* ptr_t = thread->get_data();
-			std::move(ptr_t->begin(), ptr_t->end(), dest_iterator);
-			*ptr_t = T{};
+			T* ptr_per_thread_data = thread->get_data();
+			//std::move(ptr_per_thread_data->begin(), ptr_per_thread_data->end(), dest_iterator);
+			for (U& elem : *ptr_per_thread_data) {
+				*dest_iterator = static_cast<U&&>(elem);
+				++dest_iterator;
+			}
+			//*ptr_per_thread_data = T{};
+			ptr_per_thread_data->clear();
 		}
 	}
 
@@ -163,7 +173,8 @@ public:
 			fn(*thread->get_data());
 		}
 
-		std::for_each(data.begin(), data.end(), std::forward<Fn>(fn));
+		for (auto& d : data)
+			fn(d);
 	}
 
 	// Resets all data and threads

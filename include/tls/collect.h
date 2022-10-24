@@ -71,13 +71,13 @@ class collect {
 
 private:
 	// the head of the threads that access this collect instance
-	thread_data* head{};
+	inline static thread_data* head{};
 
 	// All the data collected from threads
-	std::vector<T> data{};
+	inline static std::vector<T> data{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
-	std::shared_mutex mtx;
+	inline static std::shared_mutex mtx;
 
 	// Adds a new thread
 	void init_thread(thread_data* t) noexcept {

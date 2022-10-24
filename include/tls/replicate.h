@@ -175,15 +175,15 @@ public:
 	}
 
 private:
-	// The head of threads that access this replicator. Changes to 'data'
-	// will be replicated threads reachable from here
-	thread_data *head{};
-
 	// The main data that is replicated to threads
 	T data;
 
+	// The head of threads that access this replicator. Changes to 'data'
+	// will be replicated threads reachable from here
+	inline static thread_data *head{};
+
 	// Mutex to serialize access to 'data' when it is modified
-	std::shared_mutex mtx;
+	inline static std::shared_mutex mtx;
 };
 } // namespace tls
 #endif // !TLS_REPLICATE_H

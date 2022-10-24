@@ -71,10 +71,10 @@ class split {
 
 private:
 	// the head of the threads that access this split instance
-	thread_data *head{};
+	inline static thread_data* head{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
-	std::shared_mutex mtx;
+	inline static std::shared_mutex mtx;
 
 protected:
 	// Adds a thread_data

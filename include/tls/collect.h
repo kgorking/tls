@@ -1,6 +1,7 @@
 #ifndef TLS_COLLECT_H
 #define TLS_COLLECT_H
 
+#include <mutex> // for std::scoped_lock
 #include <shared_mutex>
 #include <vector>
 

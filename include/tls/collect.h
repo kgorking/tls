@@ -20,14 +20,14 @@ class collect {
 	// Its lifetime is marked as thread_local, which means that it can live longer than
 	// the splitter<> instance that spawned it.
 	struct thread_data {
-		constexpr ~thread_data() noexcept {
+		~thread_data() noexcept {
 			if (owner != nullptr) {
 				owner->remove_thread(this);
 			}
 		}
 
 		// Return a reference to an instances local data
-		[[nodiscard]] constexpr T& get(collect* instance) noexcept {
+		[[nodiscard]] T& get(collect* instance) noexcept {
 			// If the owner is null, (re-)initialize the thread.
 			// Data may still be present if the thread_local instance is still active
 			if (owner == nullptr) {
@@ -38,7 +38,7 @@ class collect {
 			return data;
 		}
 
-		constexpr void remove(collect* instance) noexcept {
+		void remove(collect* instance) noexcept {
 			if (owner == instance) {
 				data = {};
 				owner = nullptr;
@@ -46,20 +46,20 @@ class collect {
 			}
 		}
 
-		[[nodiscard]] constexpr T* get_data() noexcept {
+		[[nodiscard]] T* get_data() noexcept {
 			return &data;
 		}
-		[[nodiscard]] constexpr T const* get_data() const noexcept {
+		[[nodiscard]] T const* get_data() const noexcept {
 			return &data;
 		}
 
-		constexpr void set_next(thread_data* ia) noexcept {
+		void set_next(thread_data* ia) noexcept {
 			next = ia;
 		}
-		[[nodiscard]] constexpr thread_data* get_next() noexcept {
+		[[nodiscard]] thread_data* get_next() noexcept {
 			return next;
 		}
-		[[nodiscard]] constexpr thread_data const* get_next() const noexcept {
+		[[nodiscard]] thread_data const* get_next() const noexcept {
 			return next;
 		}
 

@@ -102,12 +102,14 @@ private:
 			head = t->get_next();
 		} else {
 			auto curr = head;
-			while (curr->get_next() != nullptr) {
-				if (curr->get_next() == t) {
-					curr->set_next(t->get_next());
-					return;
-				} else {
-					curr = curr->get_next();
+			if (nullptr != curr) {
+				while (curr->get_next() != nullptr) {
+					if (curr->get_next() == t) {
+						curr->set_next(t->get_next());
+						return;
+					} else {
+						curr = curr->get_next();
+					}
 				}
 			}
 		}
@@ -176,6 +178,30 @@ public:
 
 		for (auto& d : data)
 			fn(d);
+	}
+
+	// Perform an non-modifying action on all threads data
+	template <class Fn>
+	void for_each(Fn&& fn) const noexcept {
+		{
+			std::scoped_lock sl(mtx);
+			for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+				fn(*thread->get_data());
+			}
+		}
+
+		for (auto const& d : data)
+			fn(d);
+	}
+
+	// Clears all data
+	void clear() noexcept {
+		std::scoped_lock sl(mtx);
+		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+			*(thread->get_data()) = {};
+		}
+
+		data.clear();
 	}
 
 	// Resets all data and threads

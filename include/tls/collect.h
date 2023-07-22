@@ -1,6 +1,7 @@
 #ifndef TLS_COLLECT_H
 #define TLS_COLLECT_H
 
+#include <mutex>
 #include <shared_mutex>
 #include <vector>
 #include <concepts>

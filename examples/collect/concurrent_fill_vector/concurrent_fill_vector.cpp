@@ -7,13 +7,13 @@
 #include <tls/collect.h>
 
 // Dumps the content of a vector
-void dump(std::vector<int> const& v) {
-    for (int val : v)
+void dump(std::vector<unsigned> const& v) {
+	for (unsigned val : v)
         std::cout << val << ' ';
 }
 
 // Prints the threaded vectors with a '-' to indicate threaded splits
-void dump_threaded(std::vector<std::vector<int>> const& threaded_vec) {
+void dump_threaded(std::vector<std::vector<unsigned>> const& threaded_vec) {
     for (auto const& vec : threaded_vec) {
         dump(vec);
         std::cout << "- ";
@@ -22,8 +22,8 @@ void dump_threaded(std::vector<std::vector<int>> const& threaded_vec) {
 }
 
 // Merges all the threaded vectors in to a single vector
-std::vector<int> flatten(std::vector<std::vector<int>> const& threaded_vec) {
-    std::vector<int> vec;
+std::vector<unsigned> flatten(std::vector<std::vector<unsigned>> const& threaded_vec) {
+	std::vector<unsigned> vec;
     for (auto const& t_vec : threaded_vec) {
         vec.insert(vec.end(), t_vec.begin(), t_vec.end());
     }
@@ -31,30 +31,30 @@ std::vector<int> flatten(std::vector<std::vector<int>> const& threaded_vec) {
 }
 
 int main() {
-    int const num_threads = std::thread::hardware_concurrency();
+    unsigned const num_threads = std::thread::hardware_concurrency();
     int const chunk_size = 10;
-    int const num_inputs = num_threads * chunk_size;
+	unsigned const num_inputs = num_threads * chunk_size;
 
-    std::cout << "Concurently push_back data from one vector to another.\n";
+    std::cout << "Concurrently push_back data from one vector to another.\n";
     std::cout << "Using " << num_threads << " threads, '-' in the output shows where the vector was split across threads.\n\n";
 
     // Vector to concurrently iterate over
-    std::vector<int> input(num_inputs);
+	std::vector<unsigned> input(num_inputs);
     std::iota(input.begin(), input.end(), 0);
     std::cout << "Initial data:\n";
     dump(input);
     std::cout << '\n' << '\n';
 
     // Run some concurrent code that would normally create a data race
-    tls::collect<std::vector<int>> vec;
-    auto const worker = [&](int start) {
+	tls::collect<std::vector<unsigned>> vec;
+	auto const worker = [&](unsigned start) {
         auto& local = vec.local();
-        for (int i = start; i < start + chunk_size; i++)
+		for (unsigned i = start; i < start + chunk_size; i++)
             local.push_back(i);
     };
 
     std::vector<std::thread> threads;
-    for (int thr = 0; thr < num_threads; thr++) {
+	for (unsigned thr = 0; thr < num_threads; thr++) {
         threads.emplace_back(worker, thr * chunk_size);
     }
 
@@ -67,7 +67,7 @@ int main() {
     dump_threaded(collect);
 
     std::cout << "Flattened:\n";
-    std::vector<int> reduced_vec = flatten(collect);
+	std::vector<unsigned> reduced_vec = flatten(collect);
     dump(reduced_vec);
     std::cout << '\n' << '\n';
 

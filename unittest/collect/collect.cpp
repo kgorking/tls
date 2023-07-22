@@ -1,5 +1,6 @@
 #include "../catch.hpp"
 #include <execution>
+#include <thread>
 #include <tls/collect.h>
 
 TEST_CASE("tls::collect<> specification") {
@@ -18,8 +19,8 @@ TEST_CASE("tls::collect<> specification") {
 		tls::collect<int, struct B> acc2;
 
 		std::for_each(std::execution::par, vec.begin(), vec.end(), [&](int const i) {
-			acc1.local() += 1*i;
-			acc2.local() += 2*i;
+			acc1.local() += 1 * i;
+			acc2.local() += 2 * i;
 		});
 
 		auto collect = acc1.gather();
@@ -35,22 +36,31 @@ TEST_CASE("tls::collect<> specification") {
 		std::vector<int> vec(1024, 1);
 		tls::collect<int> acc;
 
-		std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const i) { acc.local() += i; });
+		std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const i) {
+			acc.local() += i;
+		});
 
-		acc.for_each([](int const& i) { REQUIRE(i > 0); });
+		acc.for_each([](int const& i) {
+			REQUIRE(i > 0);
+		});
 		(void)acc.gather();
-		acc.for_each([](int const& i) { REQUIRE(i == 0); });
+		acc.for_each([](int const& i) {
+			REQUIRE(i == 0);
+		});
 	}
 
-	SECTION("reseting after use cleans up properly") {
+	SECTION("clearing after use cleans up properly") {
 		std::vector<int> vec(1024, 1);
 		tls::collect<int> acc;
 
-		std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const i) { acc.local() += i; });
-		acc.reset();
+		std::for_each(std::execution::par, vec.begin(), vec.end(), [&acc](int const i) {
+			acc.local() += i;
+		});
 
+		acc.clear();
 		auto const collect = acc.gather();
-		REQUIRE(collect.size() == 0);
+		for (int val : collect)
+			CHECK(val == 0);
 	}
 
 	SECTION("multiple instances in same scope points to the same data") {
@@ -61,28 +71,17 @@ TEST_CASE("tls::collect<> specification") {
 		CHECK(s1.local() == 3);
 		CHECK(s2.local() == 3);
 		CHECK(s3.local() == 3);
-
-		tls::collect<int, bool> s4;
-		tls::collect<int, char> s5;
-		tls::collect<int, short> s6;
-		s4.local() = 1;
-		s5.local() = 2;
-		s6.local() = 3;
-		CHECK(s4.local() == 1);
-		CHECK(s5.local() == 2);
-		CHECK(s6.local() == 3);
 	}
 
-	SECTION("data does not persist between out-of-scope instances") {
+	SECTION("data persist between out-of-scope instances") {
 		{
 			tls::collect<int> s1;
 			s1.local() = 1;
-			CHECK(s1.local() == 1);
 		}
 
 		{
 			tls::collect<int> s2;
-			CHECK(s2.local() != 1);
+			CHECK(s2.local() == 1);
 		}
 	}
 
@@ -101,5 +100,45 @@ TEST_CASE("tls::collect<> specification") {
 		REQUIRE(vec.size() == counter);
 		for (int i : vec)
 			REQUIRE(2 == i);
+	}
+
+	SECTION("data persists after thread deaths") {
+		tls::unique_collect<int> collector;
+
+		{
+			std::vector<std::jthread> threads;
+			for (int i = 0; i < 10; i++) {
+				threads.emplace_back([&collector, i]() {
+					collector.local() = i;
+				});
+			}
+		}
+
+		auto collection = collector.gather();
+		std::sort(collection.begin(), collection.end());
+		REQUIRE(collection.size() == 10);
+		for (int i = 0; i < 10; i++) {
+			CHECK(collection[i] == i);
+		}
+	}
+
+	SECTION("tls::unique_collect<> are unique") {
+		tls::unique_collect<int> s4;
+		tls::unique_collect<int> s5;
+		tls::unique_collect<int> s6;
+		s4.local() = 1;
+		s5.local() = 2;
+		s6.local() = 3;
+		CHECK(s4.local() == 1);
+		CHECK(s5.local() == 2);
+		CHECK(s6.local() == 3);
+	}
+
+	SECTION("xx") {
+		tls::collect<float> cf;
+		cf.local() += 1.23f;
+
+		cf.for_each([](float const&) {});
+		cf.for_each([](float&) {});
 	}
 }

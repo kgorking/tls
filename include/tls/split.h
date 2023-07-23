@@ -124,8 +124,8 @@ public:
 	}
 };
 
-template <typename T, typename U = decltype([] {})>
-using unique_split = split<T, U>;
+template <typename T, auto U = [] {}>
+using unique_split = split<T, decltype(U)>;
 
 } // namespace tls
 

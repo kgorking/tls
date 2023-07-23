@@ -173,8 +173,8 @@ public:
 	}
 };
 
-template <typename T, typename U = decltype([] {})>
-using unique_collect = collect<T, U>;
+template <typename T, auto U = [] {}>
+using unique_collect = collect<T, decltype(U)>;
 
 } // namespace tls
 

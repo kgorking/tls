@@ -88,7 +88,7 @@ TEST_CASE("tls::collect<> specification") {
 	SECTION("gather flatten works") {
 		std::vector<int> vec(std::thread::hardware_concurrency(), 1);
 		tls::collect<std::vector<int>> collector;
-		std::atomic_int counter = 0;
+		std::atomic_size_t counter = 0;
 
 		std::for_each(std::execution::par, vec.begin(), vec.end(), [&](int const&) {
 			collector.local().push_back(2);

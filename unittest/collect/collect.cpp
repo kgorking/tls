@@ -15,8 +15,8 @@ TEST_CASE("tls::collect<> specification") {
 
 	SECTION("does not cause data races") {
 		std::vector<int> vec(1024 * 1024, 1);
-		tls::collect<int, struct A> acc1;
-		tls::collect<int, struct B> acc2;
+		tls::unique_collect<int> acc1;
+		tls::unique_collect<int> acc2;
 
 		std::for_each(std::execution::par, vec.begin(), vec.end(), [&](int const i) {
 			acc1.local() += 1 * i;
@@ -140,5 +140,12 @@ TEST_CASE("tls::collect<> specification") {
 
 		cf.for_each([](float const&) {});
 		cf.for_each([](float&) {});
+	}
+
+	SECTION("can use different containers") {
+		tls::collect<int, std::list<int>> cf;
+		cf.local() = 132;
+		auto collected = cf.gather();
+		REQUIRE(collected.front() == 132);
 	}
 }

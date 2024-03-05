@@ -14,7 +14,7 @@ namespace tls {
 // which also resets the data on the threads by moving it.
 // Use `tls::unique_collect` or pass different types to 'UnusedDifferentiatorType'
 // to create different types.
-template <typename T, typename UnusedDifferentiatorType = void>
+template <typename T, typename Container = std::vector<T>, typename UnusedDifferentiatorType = void>
 class collect final {
 	// This struct manages the instances that access the thread-local data.
 	// Its lifetime is marked as thread_local, which means that it can live longer than
@@ -61,14 +61,13 @@ class collect final {
 	};
 
 private:
+	static constexpr bool has_container = not std::same_as<Container, std::nullptr_t>;
+
 	// the head of the threads
 	inline static std::forward_list<thread_data*> head{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
 	inline static std::shared_mutex mtx;
-
-	// All the data collected from threads
-	inline static std::vector<T> data{};
 
 	// Adds a new thread
 	static void init_thread(thread_data* t) {
@@ -80,12 +79,22 @@ private:
 	static void remove_thread(thread_data* t) {
 		std::unique_lock sl(mtx);
 
-		// Take the thread data
-		T* local_data = t->get_data();
-		data.push_back(static_cast<T&&>(*local_data));
+		if constexpr (has_container) {
+			// Take the thread data
+			T* local_data = t->get_data();
+			collected_data().push_back(static_cast<T&&>(*local_data));
+		}
 
 		// Remove the thread from the linked list
 		head.remove(t);
+	}
+
+	// Returns all the data collected from threads
+	static Container& collected_data()
+		requires(has_container)
+	{
+		static Container data{};
+		return data;
 	}
 
 public:
@@ -97,9 +106,12 @@ public:
 
 	// Gathers all the threads data and returns it. This clears all stored data.
 	[[nodiscard]]
-	static std::vector<T> gather() {
+	static Container gather()
+		requires(has_container)
+	{
 		std::unique_lock sl(mtx);
 
+		auto& data = collected_data();
 		for (thread_data* thread : head) {
 			data.push_back(std::move(*thread->get_data()));
 			*thread->get_data() = T{};
@@ -110,14 +122,14 @@ public:
 
 	// Gathers all the threads data and sends it to the output iterator. This clears all stored data.
 	static void gather_flattened(auto dest_iterator)
-		requires(std::ranges::range<T>)
+		requires(std::ranges::range<T> && has_container)
 	{
 		std::unique_lock sl(mtx);
 
-		for (T& per_thread_data : data) {
+		for (T& per_thread_data : collected_data()) {
 			std::move(per_thread_data.begin(), per_thread_data.end(), dest_iterator);
 		}
-		data.clear();
+		collected_data().clear();
 
 		for (thread_data* thread : head) {
 			T* ptr_per_thread_data = thread->get_data();
@@ -136,16 +148,18 @@ public:
 				fn(*thread->get_data());
 			}
 
-			for (auto const& d : data)
-				fn(d);
+			if constexpr (has_container)
+				for (auto const& d : collected_data())
+					fn(d);
 		} else {
 			std::unique_lock sl(mtx);
 			for (thread_data* thread : head) {
 				fn(*thread->get_data());
 			}
 
-			for (auto& d : data)
-				fn(d);
+			if constexpr (has_container)
+				for (auto& d : collected_data())
+					fn(d);
 		}
 	}
 
@@ -156,12 +170,13 @@ public:
 			*(thread->get_data()) = {};
 		}
 
-		data.clear();
+		if constexpr (has_container)
+			collected_data().clear();
 	}
 };
 
-template <typename T, auto U = [] {}>
-using unique_collect = collect<T, decltype(U)>;
+template <typename T, typename Container = std::vector<T>, auto U = [] {}>
+using unique_collect = collect<T, Container, decltype(U)>;
 
 } // namespace tls
 

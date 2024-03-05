@@ -5,6 +5,7 @@
 #include <shared_mutex>
 #include <vector>
 #include <concepts>
+#include <forward_list>
 
 namespace tls {
 // Provides a thread-local instance of the type T for each thread that
@@ -61,7 +62,7 @@ class collect final {
 
 private:
 	// the head of the threads
-	inline static thread_data* head{};
+	inline static std::forward_list<thread_data*> head{};
 
 	// Mutex for serializing access for adding/removing thread-local instances
 	inline static std::shared_mutex mtx;
@@ -72,9 +73,7 @@ private:
 	// Adds a new thread
 	static void init_thread(thread_data* t) {
 		std::unique_lock sl(mtx);
-
-		t->set_next(head);
-		head = t;
+		head.push_front(t);
 	}
 
 	// Removes the thread
@@ -86,21 +85,7 @@ private:
 		data.push_back(static_cast<T&&>(*local_data));
 
 		// Remove the thread from the linked list
-		if (head == t) {
-			head = t->get_next();
-		} else {
-			auto curr = head;
-			if (nullptr != curr) {
-				while (curr->get_next() != nullptr) {
-					if (curr->get_next() == t) {
-						curr->set_next(t->get_next());
-						return;
-					} else {
-						curr = curr->get_next();
-					}
-				}
-			}
-		}
+		head.remove(t);
 	}
 
 public:
@@ -115,7 +100,7 @@ public:
 	static std::vector<T> gather() {
 		std::unique_lock sl(mtx);
 
-		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+		for (thread_data* thread : head) {
 			data.push_back(std::move(*thread->get_data()));
 			*thread->get_data() = T{};
 		}
@@ -134,7 +119,7 @@ public:
 		}
 		data.clear();
 
-		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+		for (thread_data* thread : head) {
 			T* ptr_per_thread_data = thread->get_data();
 			std::move(ptr_per_thread_data->begin(), ptr_per_thread_data->end(), dest_iterator);
 			//*ptr_per_thread_data = T{};
@@ -147,7 +132,7 @@ public:
 	static void for_each(Fn&& fn) {
 		if constexpr (std::invocable<Fn, T const&>) {
 			std::shared_lock sl(mtx);
-			for (thread_data const* thread = head; thread != nullptr; thread = thread->get_next()) {
+			for (thread_data const* thread : head) {
 				fn(*thread->get_data());
 			}
 
@@ -155,7 +140,7 @@ public:
 				fn(d);
 		} else {
 			std::unique_lock sl(mtx);
-			for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+			for (thread_data* thread : head) {
 				fn(*thread->get_data());
 			}
 
@@ -167,7 +152,7 @@ public:
 	// Clears all data
 	static void clear() {
 		std::unique_lock sl(mtx);
-		for (thread_data* thread = head; thread != nullptr; thread = thread->get_next()) {
+		for (thread_data* thread : head) {
 			*(thread->get_data()) = {};
 		}
 

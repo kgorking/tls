@@ -20,7 +20,7 @@ class none {};
 // which also resets the data on the threads by moving it.
 // Use `tls::unique_collect` or pass different types to 'UnusedDifferentiatorType'
 // to create different types.
-template <typename T, template<class> typename Container = std::vector, typename UnusedDifferentiatorType = void>
+template <typename T, template<class...> typename Container = std::vector, typename UnusedDifferentiatorType = void>
 class collect final {
 	// This struct manages the instances that access the thread-local data.
 	// Its lifetime is marked as thread_local, which means that it can live longer than
@@ -181,7 +181,7 @@ public:
 	}
 };
 
-template <typename T, template<class> typename Container = std::vector, auto U = [] {}>
+template <typename T, template<class...> typename Container = std::vector, auto U = [] {}>
 using unique_collect = collect<T, Container, decltype(U)>;
 
 } // namespace tls

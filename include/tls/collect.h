@@ -8,13 +8,19 @@
 #include <forward_list>
 
 namespace tls {
+
+// Pass this type to the 'Container' argument of 'tls::collect' to not store
+// data from expired threads. Or use 'tls::split', which does the same thing.
+template<typename>
+class none {};
+
 // Provides a thread-local instance of the type T for each thread that
 // accesses it. Data is preserved when threads die.
 // You can collect the thread_local T's with collect::gather*,
 // which also resets the data on the threads by moving it.
 // Use `tls::unique_collect` or pass different types to 'UnusedDifferentiatorType'
 // to create different types.
-template <typename T, typename Container = std::vector<T>, typename UnusedDifferentiatorType = void>
+template <typename T, template<class> typename Container = std::vector, typename UnusedDifferentiatorType = void>
 class collect final {
 	// This struct manages the instances that access the thread-local data.
 	// Its lifetime is marked as thread_local, which means that it can live longer than
@@ -61,7 +67,7 @@ class collect final {
 	};
 
 private:
-	static constexpr bool has_container = not std::same_as<Container, std::nullptr_t>;
+	static constexpr bool has_container = not std::same_as<Container<T>, none<T>>;
 
 	// the head of the threads
 	inline static std::forward_list<thread_data*> head{};
@@ -90,10 +96,10 @@ private:
 	}
 
 	// Returns all the data collected from threads
-	static Container& collected_data()
+	static Container<T>& collected_data()
 		requires(has_container)
 	{
-		static Container data{};
+		static Container<T> data{};
 		return data;
 	}
 
@@ -106,7 +112,7 @@ public:
 
 	// Gathers all the threads data and returns it. This clears all stored data.
 	[[nodiscard]]
-	static Container gather()
+	static Container<T> gather()
 		requires(has_container)
 	{
 		std::unique_lock sl(mtx);
@@ -175,7 +181,7 @@ public:
 	}
 };
 
-template <typename T, typename Container = std::vector<T>, auto U = [] {}>
+template <typename T, template<class> typename Container = std::vector, auto U = [] {}>
 using unique_collect = collect<T, Container, decltype(U)>;
 
 } // namespace tls

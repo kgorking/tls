@@ -2,6 +2,7 @@
 #include <execution>
 #include <thread>
 #include <tls/collect.h>
+#include <tls/split.h>
 
 TEST_CASE("tls::collect<> specification") {
 	SECTION("new instances are default initialized") {
@@ -143,9 +144,15 @@ TEST_CASE("tls::collect<> specification") {
 	}
 
 	SECTION("can use different containers") {
-		tls::collect<int, std::list<int>> cf;
+		tls::collect<int, std::list> cf;
 		cf.local() = 132;
 		auto collected = cf.gather();
 		REQUIRE(collected.front() == 132);
+	}
+
+	SECTION("can use no container") {
+		tls::split<int> splitter;
+		tls::collect<int, tls::none> collector;
+		REQUIRE(&splitter.local() == &collector.local());
 	}
 }
